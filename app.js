@@ -1,5 +1,9 @@
 var express = require('express');
+var bodyParser = require('body-parser');
 var app = express();
+
+app.use(bodyParser.json());
+var port = process.env.PORT || 3000;
 
 const LocalClient = require('./localclient.js');
 const messages = require('./messages');
@@ -88,4 +92,5 @@ app.put('/namespaces/:namespace/actions/:actionName', function(req, res) {
   }
 });
 
+app.listen(port);
 module.exports = app;

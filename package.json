@@ -15,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.17.1",
     "cron": "^1.2.1",
     "dockerode": "^2.4.3",
     "duplexer": "^0.1.1",

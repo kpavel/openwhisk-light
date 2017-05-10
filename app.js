@@ -37,18 +37,15 @@ app.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
     .catch(function(e) {
       console.log("there was invoke error: " + e);
       if(e == messages.TOTAL_CAPACITY_LIMIT){
-        console.log("!!!!!!!!!!++++++++++ Here will delegate the post to backup ow service +++++++++!!!!!!!!!!");
+        console.log("Maximal local capacity reached, delegating action invoke to bursting ow service");
 
         if(burstOWService){
           client.request("POST", burstOWService + req.path, req.body).then(function(result){
             console.log("--- RESULT: " + JSON.stringify(result));
             res.send(result);
           }).catch(function(e) {
-            console.log("--- ERRORR!: " + JSON.stringify(e));
-
-            // if(JSON.stringify(e).indexOf("Error, action missing")){
-            //   console.log("Getting action")
-            // }
+            console.log("--- ERROR: " + JSON.stringify(e));
+            res.status(404).send(e);
           });
         }else{
           res.status(404).send(e);  

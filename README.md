@@ -19,7 +19,7 @@ OpenWhisk local docker Node.js REST API module.
 ### Getting started
 
 Best and fastest option is to start `openwhisk-local` inside docker container.
-Use [a relative link](Dockerfile) to build `openwhisk-local` docker image
+Use [DOCKERFILE](Dockerfile) to build `openwhisk-local` docker image
 ``` sh
 docker build -t ow-local --no-cache .
 docker run -d --net=my-net -p 3024:3042 -e PORT=3042 -e DOCKER_HOST=http://${MY_HOST}:2375 -e OPENWHISK_URL=https://openwhisk.ng.bluemix.net/api/v1 ow-local

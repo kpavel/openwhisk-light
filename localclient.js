@@ -59,6 +59,9 @@ class LocalClient {
 
   constructor (options) {
     this.docker = new Docker(this.parse_options(options));
+    
+    // in case this environment variable specified this network will be used for action containers.
+    this.nwName = process.env.OW_LOCAL_DOCKER_NW_NAME;
 
     //e.g. { $ACTION_NAME: [{ state: "created", container: container_object, used: timestamp_seconds... , ] };
     this.containers = {};

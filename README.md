@@ -22,7 +22,7 @@ Best and fastest option is to start `openwhisk-local` inside docker container.
 Use [DOCKERFILE](Dockerfile) to build `openwhisk-local` docker image
 ``` sh
 docker build -t ow-local --no-cache .
-docker run -d --net=my-net -p 3024:3042 -e PORT=3042 -e DOCKER_HOST=http://${MY_HOST}:2375 -e OPENWHISK_URL=https://openwhisk.ng.bluemix.net/api/v1 ow-local
+docker run -d --net=my-net -p 3024:3042 -e PORT=3042 -e DOCKER_HOST=${MY_HOST}:2375 -e OPENWHISK_URL=https://openwhisk.ng.bluemix.net/api/v1 ow-local
 ```
 * DOCKER_HOST must be hostname routable from my-net network
 * Action containers will run on the same virtual network (my-net in the example above) as `openwhisk-local`
@@ -43,6 +43,37 @@ cd node_modules/openwhisk-local/; npm start
 var client = new LocalClient({dockerurl: 'http://localhost:2375' });
 
 ```
+
+### Openwhisk CLI
+
+* command example
+``` sh
+wsk --apihost ${MY_HOST}:3024 action get ${MY_OW_ACTION_NAME}
+
+```
+
+* Status:
+
+--------------------------------------------
+| 		COMMAND 	 	|		STATUS		|
+--------------------------------------------
+| action  	| create  	| Not supported 	|
+|		  	| update	| Not supported 	|
+|		  	| invoke	| 	Supported 		|
+|		  	| get		| Delegated		 	|
+|		  	| delete	| Not supported 	|
+|		  	| list		| Not supported 	|
+|activation	|		Not supported 			|
+|package	|		Not supported 			|
+|rule		|		Not supported 			|
+|sdk		|		Not supported 			|
+|property	|		Not supported 			|
+|namespace	| list		| Delegated 		|
+|		  	| get		| Not supported	 	|
+|list		|		Not supported 			|
+|api-experimental|	Not supported 			|
+--------------------------------------------
+
 
 ## License
 TODO

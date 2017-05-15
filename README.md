@@ -55,22 +55,23 @@ wsk --apihost ${MY_HOST}:3024 action get ${MY_OW_ACTION_NAME}
 * Status:
 
 
-| COMMAND    	|        	| STATUS        	|
-|------------	|--------	|---------------	|
-| action     	| create 	| Not supported 	|
-|            	| update 	| Not supported 	|
-|            	| invoke 	| Supported     	|
-|            	| get    	| Delegated     	|
-|            	| delete 	| Not supported 	|
-|            	| list   	| Not supported 	|
-| activation 	|        	| Not supported 	|
-| package    	|        	| Not supported 	|
-| rule       	|        	| Not supported 	|
-| sdk        	|        	| Not supported 	|
-| property   	|        	| Not supported 	|
-| namespace  	| list   	| Delegated     	|
-|            	| get    	| Not supported 	|
-| list       	|        	| Not supported 	|
+| COMMAND          	|        	| STATUS        	|
+|------------------	|--------	|---------------	|
+| action           	| create 	| Not supported 	|
+|                  	| update 	| Not supported 	|
+|                  	| invoke 	| Supported     	|
+|                  	| get    	| Delegated     	|
+|                  	| delete 	| Not supported 	|
+|                  	| list   	| Not supported 	|
+| activation       	|        	| Not supported 	|
+| package          	|        	| Not supported 	|
+| rule             	|        	| Not supported 	|
+| sdk              	|        	| Not supported 	|
+| property         	|        	| Not supported 	|
+| namespace        	| list   	| Delegated     	|
+|                  	| get    	| Not supported 	|
+| list             	|        	| Not supported 	|
+| api-experimental 	|        	| Not supported 	|
 
 
 ## License

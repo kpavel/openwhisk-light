@@ -367,8 +367,11 @@ class LocalClient {
     });
   }
 
-  request (method, url, body) {
+  request (method, url, body, headers) {
     const req = this.params(method, url, body);
+    if(headers){
+        req.headers = headers;
+    }
     return rp(req);
   }
 

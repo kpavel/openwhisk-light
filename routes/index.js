@@ -165,6 +165,18 @@ router.get('/namespaces', function(req, res) {
     .catch(function (err) { console.log("get namespaces error: " + err); res.json({parameters: []});});
 });
 
+router.get('/namespaces/:namespace', function(req, res) {
+    var api_key = from_auth_header(req);
+
+    client.request("GET", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+        res.send(result);
+      }).catch(function(e) {
+        console.log("--- ERROR: " + JSON.stringify(e));
+        res.status(404).send(e);
+      });
+
+});
+
 function getAction(namespace, actionName, req){
         var api_key = from_auth_header(req);
         var ow_client = openwhisk({api: openwhiskUrl, api_key});

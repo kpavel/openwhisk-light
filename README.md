@@ -69,7 +69,7 @@ wsk --apihost ${MY_HOST}:3024 action get ${MY_OW_ACTION_NAME}
 | sdk              	|        	| Not supported 	|
 | property         	|        	| Not supported 	|
 | namespace        	| list   	| Delegated     	|
-|                  	| get    	| Not supported 	|
+|                  	| get    	| Delegated 	    |
 | list             	|        	| Not supported 	|
 | api-experimental 	|        	| Not supported 	|
 

@@ -1,11 +1,10 @@
 var express = require('express');
 var router = express.Router();
 var openwhisk = require('openwhisk');
+var bodyParser = require('body-parser');
 
 const LocalClient = require('./../localclient.js');
 const messages = require('./../messages');
-
-var port = process.env.PORT || 3000;
 
 const openwhisklocal = require("./../openwhisklocal.js") || {}; // holds node specific settings, consider to use another file, e.g. openwhisklocal.js as option
 const burstOWService = process.env.BURST_OW_SERVICE || openwhisklocal.burstOWService; // max number of containers per host
@@ -22,6 +21,8 @@ console.log("DOCKERHOST: " + dockerhost);
 console.log("OPENWHISK_URL: " + openwhiskUrl);
 
 var client = new LocalClient({dockerurl: dockerhost});
+
+router.use(bodyParser.json());
 
 router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
   console.log("req: " + JSON.stringify(req.body));

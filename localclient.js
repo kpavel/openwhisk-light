@@ -557,7 +557,7 @@ class LocalClient {
   };
   
   // delete local action from pool.
-  delete(actionName){
+  deleteAction(actionName){
     delete that.actions[actionName];
   };
 

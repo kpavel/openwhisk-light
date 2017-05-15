@@ -154,7 +154,7 @@ router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
     var api_key = from_auth_header(req);
 
     client.request("DELETE", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
-    	client.delete(actionName);
+    	client.deleteAction(req.params.actionName);
         res.send(result);
       }).catch(function(e) {
         console.log("--- ERROR: " + JSON.stringify(e));

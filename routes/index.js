@@ -104,43 +104,6 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
     })
 });
 
-router.put('/namespaces/:namespace/actions/:actionName', function(req, res) {
-  console.log("req: " + JSON.stringify(req.body));
-  console.log("PATH: " + req.path);
-  console.log("params: " + JSON.stringify(req.params));
-  console.log("namespace: " + req.params.namespace);
-  console.log("actionName: " + req.params.actionName);
-  console.log("BODY: " + JSON.stringify(req.body));
-
-
-
-  client.create(req.params.actionName, req.body)
-    .then((result) => {
-       console.log("result: " + JSON.stringify(result));
-       res.send(result);
-    })
-    .catch(function(e) {
-      console.log(e);
-      res.status(500).send(e);
-    })
-
-  if(burstOWService){
-    client.request("PUT", burstOWService + req.path, req.body).then(function(result){
-      console.log("--- RESULT: " + JSON.stringify(result));
-      res.send(result);
-    }).catch(function(e) {
-      console.log("--- ERRORR registering action in bursting!: " + JSON.stringify(e));
-
-      // if(JSON.stringify(e).indexOf("Error, action missing")){
-      //   console.log("Getting action")
-      // }
-    });
-  }
-});
-
-
-
-
 
 
 
@@ -174,8 +137,78 @@ router.get('/namespaces/:namespace', function(req, res) {
         console.log("--- ERROR: " + JSON.stringify(e));
         res.status(404).send(e);
       });
-
 });
+
+router.get('/namespaces/:namespace/actions', function(req, res) {
+    var api_key = from_auth_header(req);
+
+    client.request("GET", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+        res.send(result);
+      }).catch(function(e) {
+        console.log("--- ERROR: " + JSON.stringify(e));
+        res.status(404).send(e);
+      });
+});
+
+router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
+    var api_key = from_auth_header(req);
+
+    client.request("DELETE", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+    	client.delete(actionName);
+        res.send(result);
+      }).catch(function(e) {
+        console.log("--- ERROR: " + JSON.stringify(e));
+        res.status(404).send(e);
+      });
+});
+
+// create/update action in global ow, then create/update locally, then if applicable create/update in burst service
+router.put('/namespaces/:namespace/actions/:actionName', function(req, res) {
+	  console.log("req: " + JSON.stringify(req.body));
+	  console.log("PATH: " + req.path);
+	  console.log("params: " + JSON.stringify(req.params));
+	  console.log("namespace: " + req.params.namespace);
+	  console.log("actionName: " + req.params.actionName);
+	  console.log("BODY: " + JSON.stringify(req.body));
+
+	  client.request("PUT", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+		  client.create(req.params.actionName, req.body)
+		    .then((result) => {
+		       console.log("result: " + JSON.stringify(result));
+		       res.send(result);
+		    })
+		    .catch(function(e) {
+		      console.log(e);
+		      res.status(500).send(e);
+		    })
+	
+		  if(burstOWService){
+		    client.request("PUT", burstOWService + req.path, req.body).then(function(result){
+		      console.log("--- RESULT: " + JSON.stringify(result));
+		      res.send(result);
+		    }).catch(function(e) {
+		      console.log("--- ERRORR registering action in bursting!: " + JSON.stringify(e));
+	
+		      // if(JSON.stringify(e).indexOf("Error, action missing")){
+		      //   console.log("Getting action")
+		      // }
+		    });
+		  }
+      }).catch(function(e) {
+        console.log("--- ERROR: " + JSON.stringify(e));
+        res.status(404).send(e);
+      });
+});
+
+
+
+
+
+
+
+
+
+
 
 function getAction(namespace, actionName, req){
         var api_key = from_auth_header(req);

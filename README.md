@@ -57,12 +57,12 @@ wsk --apihost ${MY_HOST}:3024 action get ${MY_OW_ACTION_NAME}
 
 | COMMAND          	|        	| STATUS        	|
 |------------------	|--------	|---------------	|
-| action           	| create 	| Not supported 	|
-|                  	| update 	| Not supported 	|
+| action           	| create 	| Supported 	|
+|                  	| update 	| Supported 	|
 |                  	| invoke 	| Supported     	|
 |                  	| get    	| Delegated     	|
-|                  	| delete 	| Not supported 	|
-|                  	| list   	| Not supported 	|
+|                  	| delete 	| Supported     	|
+|                  	| list   	| Delegated     	|
 | activation       	|        	| Not supported 	|
 | package          	|        	| Not supported 	|
 | rule             	|        	| Not supported 	|

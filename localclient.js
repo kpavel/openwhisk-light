@@ -555,6 +555,11 @@ class LocalClient {
       }
     });
   };
+  
+  // delete local action from pool.
+  delete(actionName){
+    delete that.actions[actionName];
+  };
 
   createContainer(action){
     var that = this;

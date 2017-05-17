@@ -18,7 +18,7 @@ router.use('/namespaces/:namespace*', function(req, res) {
   console.log("METHOD: " + req.method);
   console.log("headers: " + JSON.stringify(req.headers));
 
-  var url = openwhiskHost + req.originalUrl;
+  var url = openwhiskApi + req.originalUrl;
   console.log("url: " + url);
 
   var r = null;

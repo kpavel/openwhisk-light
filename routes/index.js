@@ -13,16 +13,12 @@ var dockerhost = process.env.DOCKER_HOST || function() {
     throw "please set the DOCKER_HOST environmental variable";
 }();
 
-var openwhiskUrl = process.env.OPENWHISK_URL || function() {
-    throw "please set the OPENWHISK_URL environmental variable pointing to openwhisk global";
-}();
-
-var openwhiskHost = process.env.OPENWHISK_HOST || function() {
-    throw "please set the OPENWHISK_HOST environmental variable pointing to openwhisk global";
+var openwhiskApi = process.env.OPENWHISK_API || function() {
+    throw "please set the OPENWHISK_API environmental variable pointing to openwhisk global";
 }();
 
 console.log("DOCKERHOST: " + dockerhost);
-console.log("OPENWHISK_URL: " + openwhiskUrl);
+console.log("OPENWHISK_API: " + openwhiskApi);
 
 var client = new LocalClient({dockerurl: dockerhost});
 var stringify = require('json-stringify-safe');
@@ -57,7 +53,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
       console.log("there was invoke error1 : " + e);
       if(e == messages.ACTION_MISSING_ERROR){
 
-        console.log("getting action " + req.params.actionName + " from " + openwhiskUrl);
+        console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
         getAction(req.params.namespace, req.params.actionName, req)
         .then((action)=>{
                 console.log("got action: " + JSON.stringify(action));
@@ -127,12 +123,12 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 
 function getAction(namespace, actionName, req){
         var api_key = from_auth_header(req);
-        var ow_client = openwhisk({api: openwhiskUrl, api_key});
+        var ow_client = openwhisk({api: openwhiskApi, api_key});
 
     return new Promise(function(resolve,reject) {
         ow_client.actions.get({actionName, namespace})
             .then(function (action) {
-                console.log("Got action from " + openwhiskUrl + ": " + JSON.stringify(action));
+                console.log("Got action from " + openwhiskApi + ": " + JSON.stringify(action));
                 resolve(action);
             })
             .catch((e) => {

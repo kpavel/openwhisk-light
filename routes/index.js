@@ -14,7 +14,7 @@ var dockerhost = process.env.DOCKER_HOST || function() {
 }();
 
 var openwhiskApi = process.env.OPENWHISK_API || function() {
-    throw "please set the OPENWHISK_API environmental variable pointing to openwhisk global";
+    throw "please set the OPENWHISK_API environmental variable pointing to openwhisk global, e.g. https://openwhisk.ng.bluemix.net/api/v1";
 }();
 
 console.log("DOCKERHOST: " + dockerhost);

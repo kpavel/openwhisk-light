@@ -26,14 +26,12 @@ router.use('/namespaces/:namespace*', function(req, res) {
 
   var r = null;
   if(req.method === 'POST') {
-     r = request.post({uri: url, json: req.body});
+    req.pipe(request.post({uri: url, json: req.body}), {end: false}).pipe(res);
   } if(req.method === 'PUT'){
-     r = request.put({uri: url, json: req.body});
+    req.pipe(request.put({uri: url, json: req.body}), {end: false}).pipe(res);
   } else {
-     r = request(url);
+    req.pipe(request(url)).pipe(res);
   }
-
-  req.pipe(r, {end: false}).pipe(res);
 });
 
 module.exports = router;

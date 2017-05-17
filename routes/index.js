@@ -47,7 +47,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
     .then((result) => {
        console.log("result: " + JSON.stringify(result));
 
-       res.send(buildResponse(req.params.actionName, req.params.namespace, start, result));
+       res.send(buildResponse(req, start, result));
     })
     .catch(function(e) {
       console.log("there was invoke error1 : " + e);
@@ -65,14 +65,14 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
                    client.invoke(req.params.actionName, req.body)
                    .then((result) => {
                       console.log("Invoke result: " + JSON.stringify(result));
-                      var response = buildResponse(req.params.actionName, req.params.namespace, start, result);
+                      var response = buildResponse(req, start, result);
                        console.log("Invoke response: " + JSON.stringify(response));
                       res.send(response);
                    })
                    .catch(function(error) {
                      console.log("Invoke error: " + error.error);
 
-                var iResponse = buildResponse(req.params.actionName, req.params.namespace, start, {}, error);
+                var iResponse = buildResponse(req, start, {}, error);
                 console.log("returning: " + JSON.stringify(iResponse));
                      res.status(502).send(iResponse);
                         console.log("done");
@@ -116,7 +116,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
           res.status(404).send(e);
         }
       }else{
-        res.status(502).send(buildResponse(req.params.actionName, req.params.namespace, start, {}, e));
+        res.status(502).send(buildResponse(req, start, {}, e));
       }
     })
 });
@@ -144,11 +144,10 @@ function from_auth_header(req) {
   return auth;
 }
 
-function buildResponse(name, namespace, start, result, error){
+function buildResponse(req, start, result, error){
   var end = new Date().getTime();
   var response;
   if(error !== undefined){
-
     console.log("error.error.error: " + error.error.error);
     response = {
         "result": {
@@ -158,19 +157,23 @@ function buildResponse(name, namespace, start, result, error){
         "success": false
     };
   }else{
-    response = {
-        result,
-        "status": "success",
-        "success": true
-    };
+	if(req.query.result === "true"){
+		return result;
+	}else{
+	    response = {
+	        result,
+	        "status": "success",
+	        "success": true
+	    };
+	}
   }
 
   return {
     duration: (end - start),
     end,
     "logs": [],
-    name,
-    namespace,
+    name: req.params.actionName,
+    namespace: req.params.namespace,
     "publish": false,
     response,
     start,

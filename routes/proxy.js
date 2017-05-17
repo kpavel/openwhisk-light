@@ -33,7 +33,7 @@ router.use('/namespaces/:namespace*', function(req, res) {
      r = request(url);
   }
 
-  req.pipe(r).pipe(res);
+  req.pipe(r).pipe(res, {end: false});
 });
 
 module.exports = router;

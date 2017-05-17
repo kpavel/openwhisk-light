@@ -1,4 +1,3 @@
-
 var Docker = require('dockerode');
 var urllib = require("url");
 var validator = require('validator');
@@ -11,9 +10,9 @@ var _ = require("underscore");
 const os = require("os");
 
 
-const openwhisklocal = require("./openwhisklocal.js") || {}; // holds node specific settings, consider to use another file, e.g. openwhisklocal.js as option
-const totalCapacity = process.env.TOTAL_CAPACITY || openwhisklocal.totalCapacity; // max number of containers per host 
-const initTimeout = openwhisklocal.initTimeout || 10000; // action container init timeout in milliseconds
+const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
+const totalCapacity = process.env.TOTAL_CAPACITY || config.totalCapacity; // max number of containers per host
+const initTimeout = config.initTimeout || 10000; // action container init timeout in milliseconds
 
 
 /////////////////////////////////////////////////////////////
@@ -59,7 +58,7 @@ class LocalClient {
 
   constructor (options) {
     this.docker = new Docker(this.parse_options(options));
-    
+
     // in case this environment variable specified this network will be used for action containers.
     this.nwName = process.env.OW_LOCAL_DOCKER_NW_NAME;
 
@@ -74,7 +73,7 @@ class LocalClient {
 
     // TODO: as containers kept in memory when agent restarted what should happen with it's containers?
     this.cleanup({ "label": [ "action" ] });
-    
+
     var that = this;
     this.get_nw_name().then((nwName)=>{
       that.nwName = nwName;
@@ -164,7 +163,7 @@ class LocalClient {
             resolve();
           });
         });
-      }); 
+      });
     };
 
     const opts={ "filters": filter, all: true};
@@ -182,19 +181,19 @@ class LocalClient {
 
   start_preemption(){
     const that = this;
-    console.log("openwhisklocal settings: " + JSON.stringify(openwhisklocal));
+    console.log("openwhisklocal settings: " + JSON.stringify(config));
 
-    const preeemptionPeriod = openwhisklocal.preeemptionPeriod || 300;     // how often to check whether containers should be stopped
-    const preemption_high_percent = openwhisklocal.preemption_high_percent || 0.75;
-    const preemption_low_percent = openwhisklocal.preemption_low_percent || 0.25;
+    const preeemptionPeriod = config.preeemptionPeriod || 300;     // how often to check whether containers should be stopped
+    const preemption_high_percent = config.preemption_high_percent || 0.75;
+    const preemption_low_percent = config.preemption_low_percent || 0.25;
 
     const preemptionHighThresholdPerHost = totalCapacity * preemption_high_percent;  // indicates when preeption should be started (75% of max amount)
     const preemptionLowThresholdPerHost = totalCapacity * preemption_low_percent;    // low and high thresholds define an optimal window of containers performace and host utilization balance
 
-    const factors = openwhisklocal.factors || {}; // preemption factor per image type, e.g. java/blackbox container may take more time to start than js one
+    const factors = config.factors || {}; // preemption factor per image type, e.g. java/blackbox container may take more time to start than js one
 
     //TODO: rename
-    const containerCleanup = openwhisklocal.containerCleanup || 300; //seconds
+    const containerCleanup = config.containerCleanup || 300; //seconds
 
     var cronjob = new cron.CronJob('*/' + preeemptionPeriod +' * * * * *',
       function() {
@@ -202,7 +201,7 @@ class LocalClient {
         that.get_number_of_nodes().then((nodes) => {
           that.nodesNumber = nodes;
           console.log("system running on " + nodes + " nodes, checking if running containers amount is greater than " + nodes * preemptionHighThresholdPerHost);
-          
+
           var currentTime = process.hrtime()[0];
           var activeContainers = [];
           var inactiveContainers = [];
@@ -212,13 +211,13 @@ class LocalClient {
           that.containersLock.writeLock(function (release) {
             for(var action in that.actions){
               activeContainers = activeContainers.concat(_.where(that.containers[action], {state: "running"}));
-              
+
               //  TODO: move inactive containers handling to separate cron job
               inactiveContainers = inactiveContainers.concat(_.filter(that.containers[action], function(o){
                 return ((currentTime - o.used) > containerCleanup);
               }));
             }
-          
+
             console.log("activeContainers length: " + activeContainers.length);
             if(activeContainers.length >= nodes * preemptionHighThresholdPerHost){
               console.log("-starting premption as activeContainers number greater than " + nodes * preemptionHighThresholdPerHost);
@@ -229,7 +228,7 @@ class LocalClient {
                 return ((currentTime - o.used) / factor);
               }).reverse();
 
-              console.log("-need to stop " + (sortedContainers.length - nodes * preemptionLowThresholdPerHost) + " from " + sortedContainers.length);  
+              console.log("-need to stop " + (sortedContainers.length - nodes * preemptionLowThresholdPerHost) + " from " + sortedContainers.length);
               sortedContainers = sortedContainers.slice(0, sortedContainers.length - nodes * preemptionLowThresholdPerHost);
 
               var fnStop = function stop(containerInfo){
@@ -240,7 +239,7 @@ class LocalClient {
                     delete containerInfo['busy'];
                     resolve();
                   });
-                }); 
+                });
               };
 
               var actions = sortedContainers.map(fnStop);
@@ -257,7 +256,7 @@ class LocalClient {
                       resolve();
                     });
                   });
-                }); 
+                });
               };
 
               ///////
@@ -274,8 +273,8 @@ class LocalClient {
               // inactiveContainers.forEach((c) => {
               //   c.busy = true;
               // });
-              
-              
+
+
               Promise.all(actions).then((responses) => {console.log("Containers preemption finished");release();});
             }else{
               release();
@@ -303,7 +302,7 @@ class LocalClient {
           if(JSON.stringify(err).indexOf("cannot allocate memory") > 0){
             err = new Error(messages.MEMORY_LIMIT);
           }
-          
+
           return reject(err);
         }
 
@@ -313,7 +312,7 @@ class LocalClient {
 
           console.log("Container containerInfo: " + JSON.stringify(containerInfo));
           container.attach({stream: true, stdout: true, stderr: true}, function (err, stream) {
-            stream.pipe(PrefixStream(containerInfo.Name.substr(1) + ": ")).pipe(process.stdout); 
+            stream.pipe(PrefixStream(containerInfo.Name.substr(1) + ": ")).pipe(process.stdout);
           });
 
           var address = containerInfo.NetworkSettings.Networks[that.nwName].IPAddress;
@@ -323,11 +322,11 @@ class LocalClient {
           }else{
               payload = {value: { main: "main", code: action.exec.code}};
           }
-              
+
           if(action.exec.code && validator.isBase64(action.exec.code)){
             payload.value['binary'] = true;
           }
-          
+
           const RETRY_TIMEOUT = 100;
           var retries = initTimeout / RETRY_TIMEOUT
           var waitToInit = function(){
@@ -384,10 +383,10 @@ class LocalClient {
   }
 
   // using locks to prevent races
-  
+
   // from containers pool get first unused CONTAINER of specified ACTION_NAME
   // mark CONTAINER entry as used
-  
+
   // if !CONTAINER
   //     get ACTION by ACTION_NAME from actions object
   //     if !ACTION
@@ -395,12 +394,12 @@ class LocalClient {
 
   //         get ACTION from OpenWhisk Global server using credentials
   //         store ACTION under actions cache
-        
+
   //     create CONTAINER of ACTION KIND based on image name convention
   //     add CONTAINER to containers pool (as used)
   //     init CONTAINER based on ACTION details
   //     start CONTAINER
-  
+
   // invoke action on CONTAINER
   // return CONTAINER back to containers pool
   // return invoke result
@@ -414,6 +413,12 @@ class LocalClient {
             actionContainer['used'] = process.hrtime()[0];
             delete actionContainer.busy;
             return resolve(result);
+          }).catch(function(err){
+            console.log("invoke request failed with " + err);
+            actionContainer['state'] = 'running';
+            delete actionContainer.busy;
+
+            return reject(err);
           });
         }else{
           console.log("Container " + JSON.stringify(actionContainer) + " registered as not running, starting container");
@@ -426,14 +431,14 @@ class LocalClient {
               return resolve(result);
             }).catch(function(err){
               console.log("invoke request failed with " + err);
-              actionContainer['state'] = 'stopped';
+              actionContainer['state'] = 'running';
               delete actionContainer.busy;
 
               return reject(err);
             });
           }).catch(function(err){
             console.log("action invoke failed with " + err);
-            
+
             //releasing container busy flag;
             actionContainer['state'] = 'stopped';
             delete actionContainer.busy;
@@ -452,14 +457,14 @@ class LocalClient {
 
     return new Promise((resolve, reject) => {
       var actionContainers = that.containers[actionName] || [];
-      
+
       // locaking containers object
       that.containersLock.writeLock(function (release) {
 
         ///////
-        // First looking for available running container  
+        // First looking for available running container
         var activeContainers = actionContainers.filter((container) => {
-          return !container.busy && container.state == "running"; 
+          return !container.busy && container.state == "running";
         });
 
         if(activeContainers.length){
@@ -468,7 +473,7 @@ class LocalClient {
           release();
           return resolve(activeContainers[0]);
         }
-        
+
         ////////
         // All running containers busy, will have to start a stopped one or create a new one, checking that total capacity not reached
         var activeContainersNum = 0;
@@ -486,14 +491,14 @@ class LocalClient {
 
         // Now looking for already created, but stopped container
         actionContainers = actionContainers.filter((container) => {
-          return !container.busy && container.state == "stopped"; 
+          return !container.busy && container.state == "stopped";
         });
-        
+
         if(actionContainers.length){
           actionContainers[0].busy = process.hrtime()[0]; //storing timestamp of when container became busy for preemption purposes
           release();
 
-          // Releasing and returning stopped container asap 
+          // Releasing and returning stopped container asap
           resolve(actionContainers[0]);
         }else{
           //no free container, creating a new one
@@ -528,7 +533,7 @@ class LocalClient {
       if(!that.containers[actionName]){
         that.containers[actionName] = [];
       }
-      
+
       if(kind == "blackbox"){
         console.log("pulling image " + action.exec.image);
         that.docker.pull(action.exec.image, function(err, stream){
@@ -555,10 +560,11 @@ class LocalClient {
       }
     });
   };
-  
+
   // delete local action from pool.
   deleteAction(actionName){
-    delete that.actions[actionName];
+    console.log("in deletee " + actionName);
+        delete this.actions[actionName];
   };
 
   createContainer(action){

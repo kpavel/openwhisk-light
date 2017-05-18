@@ -15,9 +15,9 @@ OpenWhisk local docker Node.js REST API module.
  * Supports optional bursting service specified by BURST_OW_SERVICE environment variable
  * PORT where agent running. If not specified, 3000 will be used
  * Running `openwhisk-local` on webserver requires to set following environment variables:
- 	DOCKER_HOST -  pointing to docker engine rest API or Docker swarm manager, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375
- 	OPENWHISK_HOST - pointing to OpenWhisk global, e.g. https://openwhisk.ng.bluemix.net
-	OPENWHISK_API - poining to OpenWhisk global REST API, e.g. https://openwhisk.ng.bluemix.net/api/v1 
+ 	- DOCKER_HOST  pointing to docker engine rest API or Docker swarm manager, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375
+	- OPENWHISK_HOST  pointing to OpenWhisk global, e.g. https://openwhisk.ng.bluemix.net
+	- OPENWHISK_API  poining to OpenWhisk global REST API, e.g. https://openwhisk.ng.bluemix.net/api/v1  	
 
 ### Getting started
 

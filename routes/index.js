@@ -178,10 +178,37 @@ router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	});
 });
 
+/*
+ * Delegate action delete to openwhisk global
+ * 
+ * delete action from local registry
+ * delete action from bursting service
+ */
+router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
+    var api_key = from_auth_header(req);
+    var start = new Date().getTime();
+    
+    client.request("DELETE", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+      client.delete(actionName);
+      	if(burstOWService){
+          client.request("DELETE", burstOWService + req.path, req.body).then(function(deleted){
+            res.send(buildResponse(req, start, result));
+          }).catch(function(e) {
+            console.log("--- ERROR deleting action in bursting service: " + e);
+            res.status(502).send(buildResponse(req, start, {}, e));
+          });
+        }else{
+        	res.send(buildResponse(req, start, result));
+        }
+      }).catch(function(e) {
+        console.log("--- ERROR: " + JSON.stringify(e));
+        res.status(502).send(buildResponse(req, start, {}, e));
+      });
+});
 
 function getAction(namespace, actionName, req){
-        var api_key = from_auth_header(req);
-        var ow_client = openwhisk({api: openwhiskApi, api_key});
+    var api_key = from_auth_header(req);
+    var ow_client = openwhisk({api: openwhiskApi, api_key});
 
     return new Promise(function(resolve,reject) {
         ow_client.actions.get({actionName, namespace})

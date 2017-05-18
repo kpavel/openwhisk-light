@@ -158,13 +158,13 @@ router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
            if(burstOWService){
              client.request("PUT", burstOWService + req.path, req.body).then(function(result){
                console.log("--- RESULT: " + JSON.stringify(result));
-               res.send(buildResponse(req, start, action));
+               res.send(action);
              }).catch(function(e) {
                console.log("--- ERROR registering action in bursting service: " + e);
                res.status(502).send(buildResponse(req, start, {}, e));
              });
            }else{
-         	 res.send(buildResponse(req, start, action));
+         	 res.send(action);
            }
         })
         .catch(function(e) {

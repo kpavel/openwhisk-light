@@ -56,25 +56,25 @@ wsk --apihost ${MY_HOST}:3024  action invoke ${MY_OW_ACTION_NAME} -b -r
 * Status:
 
 
-| COMMAND          	|        	| STATUS        	|
-|------------------	|--------	|---------------	|
-| action           	| create 	| Delegated 	    |
-|                  	| update 	| Delegated 	    |
-|                  	| invoke 	| Supported     	|
-|                  	| get    	| Supported     	|
-|                  	| delete 	| Supported     	|
-|                  	| list   	| Delegated     	|
-| activation       	|        	| Not supported 	|
-| package          	|        	| Delegated 	    |
-| rule             	|        	| Not supported 	|
-| sdk              	|        	| Not supported 	|
-| property         	|        	| Not supported 	|
-| namespace        	| list   	| Delegated     	|
-| list             	|        	| Not supported 	|
-| bluemix 	      	|        	| Not supported 	|
-| trigger 	      	|        	| Not supported 	|
-| api-experimental 	|        	| Not supported 	|
-| api 	      	    |        	| Not supported 	|
+| COMMAND          	|        	| STATUS        	| COMMENTS        	|
+|------------------	|--------	|---------------	|---------------	|
+| action           	| create 	| Delegated 	    |					|
+|                  	| update 	| Delegated 	    |					|
+|                  	| invoke 	| Supported     	|with -b (blocking) flag	|
+|                  	| get    	| Supported     	|also updates action locally	|
+|                  	| delete 	| Supported     	|					|
+|                  	| list   	| Delegated     	|					|
+| activation       	|        	| Not supported 	|					|
+| package          	|        	| Delegated 	    |					|
+| rule             	|        	| Not supported 	|					|
+| sdk              	|        	| Not supported 	|					|
+| property         	|        	| Not supported 	|					|
+| namespace        	| list   	| Delegated     	|					|
+| list             	|        	| Not supported 	|					|
+| bluemix 	      	|        	| Not supported 	|					|
+| trigger 	      	|        	| Not supported 	|					|
+| api-experimental 	|        	| Not supported 	|					|
+| api 	      	    |        	| Not supported 	|					|
 
 
 ## License

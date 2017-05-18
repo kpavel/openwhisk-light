@@ -10,7 +10,7 @@ const config = require("./../config.js") || {}; // holds node specific settings,
 const burstOWService = process.env.BURST_OW_SERVICE || config.burstOWService; // max number of containers per host
 
 var dockerhost = process.env.DOCKER_HOST || function() {
-    throw "please set the DOCKER_HOST environmental variable";
+    throw "please set the DOCKER_HOST environmental variable, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375";
 }();
 
 var openwhiskApi = process.env.OPENWHISK_API || function() {
@@ -29,10 +29,23 @@ var url = require('url');
 
 router.use(bodyParser.json());
 
-
+/*
+ * OpenWhisk action invoke local implementation
+ * 
+ * 
+ * Invoke action on openwhisk local client
+ * 
+ * 		if client throws "action missing" exception
+ * 			get specified action from global openwhisk
+ * 			update local action registry
+ * 			update bursting service action registry
+ * 			invoke action on openwhisk local client and return result
+ * 
+ * 		if client throws "total capacity limit" exception
+ * 			delegate action to bursting service and return result
+ */
 router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
-  console.log("req: " + JSON.stringify(req.body));
-  console.log("authorization: " + JSON.stringify(req.authorization));
+  console.log("req: " + stringify(req));
   console.log("PATH: " + req.path);
   console.log("params: " + JSON.stringify(req.params));
   console.log("namespace: " + req.params.namespace);
@@ -120,6 +133,51 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
       }
     })
 });
+
+/*
+ * Action get name. Also currently used to update openwhisk local actions registry
+ * 
+ * Get action from openwhisk global
+ * Update local actions registry
+ * Update bursting service actions registry
+ */
+router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
+	console.log("BODY: " + JSON.stringify(req.body));
+	var start = new Date().getTime();
+
+	console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
+	getAction(req.params.namespace, req.params.actionName, req)
+	.then((action)=>{
+	    console.log("got action: " + JSON.stringify(action));
+	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
+
+        client.create(req.params.actionName, action)
+        .then((result) => {
+           console.log("action " + req.params.actionName + " registered");
+
+           if(burstOWService){
+             client.request("PUT", burstOWService + req.path, req.body).then(function(result){
+               console.log("--- RESULT: " + JSON.stringify(result));
+               res.send(buildResponse(req, start, action));
+             }).catch(function(e) {
+               console.log("--- ERROR registering action in bursting service: " + e);
+               res.status(502).send(buildResponse(req, start, {}, e));
+             });
+           }else{
+         	 res.send(buildResponse(req, start, action));
+           }
+        })
+        .catch(function(e) {
+          console.log(e);
+          res.status(502).send(buildResponse(req, start, {}, e));
+        })
+	})
+	.catch(function (err) {
+        console.log("action get error: " + err);
+        res.status(502).send(buildResponse(req, start, {}, err));
+	});
+});
+
 
 function getAction(namespace, actionName, req){
         var api_key = from_auth_header(req);

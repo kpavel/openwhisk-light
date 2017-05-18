@@ -10,19 +10,22 @@ OpenWhisk local docker Node.js REST API module.
 
 ## Usage
 
- * Contains web interface (express) matching OpenWhisk REST API. Currently supports action invoke, action get and namespace get.
- * Supports docker swarm or regular docker engine backends
- * Running local `openwhisk-local` on webserver requires to set DOCKER_HOST environment variable pointing to docker engine rest API or Docker swarm manager
+ * Contains web interface matching OpenWhisk REST API.
+ * Supports docker swarm or regular docker engine backends.
+ * Supports optional bursting service specified by BURST_OW_SERVICE environment variable
  * PORT where agent running. If not specified, 3000 will be used
- 
+ * Running `openwhisk-local` on webserver requires to set following environment variables:
+ 	DOCKER_HOST -  pointing to docker engine rest API or Docker swarm manager, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375
+ 	OPENWHISK_HOST - pointing to OpenWhisk global, e.g. https://openwhisk.ng.bluemix.net
+	OPENWHISK_API - poining to OpenWhisk global REST API, e.g. https://openwhisk.ng.bluemix.net/api/v1 
 
 ### Getting started
 
-Best and fastest option is to start `openwhisk-local` inside docker container.
+Best and fastest option is to start `openwhisk-local` is inside docker container.
 Use [DOCKERFILE](Dockerfile) to build `openwhisk-local` docker image
 ``` sh
 docker build -t ow-local --no-cache .
-docker run -d --net=my-net -p 3024:3042 -e PORT=3042 -e DOCKER_HOST=${MY_HOST}:2375 -e OPENWHISK_URL=https://openwhisk.ng.bluemix.net/api/v1 ow-local
+docker run -d --net=my-net -p 3024:3042 -e PORT=3042 -e DOCKER_HOST=${MY_HOST}:2375 -e OPENWHISK_API=https://openwhisk.ng.bluemix.net/api/v1 -e OPENWHISK_HOST=https://openwhisk.ng.bluemix.net ow-local
 ```
 * DOCKER_HOST must be hostname routable from my-net network
 * Action containers will run on the same virtual network (my-net in the example above) as `openwhisk-local`
@@ -31,24 +34,22 @@ To start `openwhisk-local` as agent not inside docker container:
 
 ``` sh
 export DOCKER_HOST = http://${MY_HOST}:2375
-export OPENWHISK_URL = https://openwhisk.ng.bluemix.net/api/v1
+export OPENWHISK_API = https://openwhisk.ng.bluemix.net/api/v1
+export OPENWHISK_HOST = https://openwhisk.ng.bluemix.net
 export OW_LOCAL_DOCKER_NW_NAME = ${DOCKER_VIRTUAL_NETWORK}
 cd node_modules/openwhisk-local/; npm start
 
 ```
 
-`openwhisk-local` can be used as library:
-
-``` js
-var client = new LocalClient({dockerurl: 'http://localhost:2375' });
-
-```
+### Bursting service
+* Another openwhisk-local agent running with Docker Swarm specified in DOCKER_HOST environment variable
+* Openwhisk global
 
 ### Openwhisk CLI
 
 * command example
 ``` sh
-wsk --apihost ${MY_HOST}:3024 action get ${MY_OW_ACTION_NAME}
+wsk --apihost ${MY_HOST}:3024  action invoke ${MY_OW_ACTION_NAME} -b -r
 
 ```
 
@@ -57,21 +58,23 @@ wsk --apihost ${MY_HOST}:3024 action get ${MY_OW_ACTION_NAME}
 
 | COMMAND          	|        	| STATUS        	|
 |------------------	|--------	|---------------	|
-| action           	| create 	| Supported 	|
-|                  	| update 	| Supported 	|
+| action           	| create 	| Delegated 	    |
+|                  	| update 	| Delegated 	    |
 |                  	| invoke 	| Supported     	|
-|                  	| get    	| Delegated     	|
+|                  	| get    	| Supported     	|
 |                  	| delete 	| Supported     	|
 |                  	| list   	| Delegated     	|
 | activation       	|        	| Not supported 	|
-| package          	|        	| Not supported 	|
+| package          	|        	| Delegated 	    |
 | rule             	|        	| Not supported 	|
 | sdk              	|        	| Not supported 	|
 | property         	|        	| Not supported 	|
 | namespace        	| list   	| Delegated     	|
-|                  	| get    	| Delegated 	    |
 | list             	|        	| Not supported 	|
+| bluemix 	      	|        	| Not supported 	|
+| trigger 	      	|        	| Not supported 	|
 | api-experimental 	|        	| Not supported 	|
+| api 	      	    |        	| Not supported 	|
 
 
 ## License

@@ -1,6 +1,3 @@
-
-
-
 var express = require('express');
 var router = express.Router();
 
@@ -16,14 +13,14 @@ console.log("OPENWHISK_HOST: " + openwhiskHost);
 
 var request = require('request');
 
+/*
+ * Proxy to global openwhisk specified by OPENWHISK_HOST environment variable
+ */
 router.use('/namespaces/:namespace*', function(req, res) {
-  console.log("in /namespaces/:namespace*");
-  console.log("METHOD: " + req.method);
-  console.log("headers: " + JSON.stringify(req.headers));
-
   var url = openwhiskHost + req.originalUrl;
   console.log("url: " + url);
-
+  console.log("delegating " + req.method + " to " + url);
+  
   var r = null;
   if(req.method === 'POST') {
     req.pipe(request.post({uri: url, json: req.body}), {end: false}).pipe(res);

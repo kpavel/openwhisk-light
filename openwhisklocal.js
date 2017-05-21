@@ -3,10 +3,13 @@ var app = express();
 
 var port = process.env.PORT || 3000;
 var index = require('./routes/index');
+var activations = require('./routes/activations');
 var proxy = require('./routes/proxy');
 
 
 app.use('/api/v1', index);
+app.use('/api/v1/', activations);
+
 app.use('/api/v1', proxy);
 
 

@@ -26,6 +26,8 @@ var stringify = require('json-stringify-safe');
 var request = require('request');
 var url = require('url');
 
+var PouchDB = require('pouchdb');
+var db = new PouchDB('owlocal.db');
 
 router.use(bodyParser.json());
 
@@ -55,17 +57,28 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
   console.log("headers: " + JSON.stringify(req.headers));
 
   var start = new Date().getTime();
+  
+  function storeAndRespond(result){
+	  console.log("raw result: " + JSON.stringify(result));
+      result = buildResponse(req, start, result);
+      
+      //store activation in local db (move to function to avoid code duplication)
+      db.post(result).then(function (response) {
+   	   result["activationId"] = response.id;
+   	   console.log("returning response: " + JSON.stringify(result));
+   	   res.send(result);
+      }).catch(function (err) {
+   	   console.log(err);
+   	   res.status(502).send(buildResponse(req, start, {}, err));
+      });
+  }
 
   client.invoke(req.params.actionName, req.body)
     .then((result) => {
-       console.log("result: " + JSON.stringify(result));
-
-       res.send(buildResponse(req, start, result));
+       storeAndRespond(result);
     })
     .catch(function(e) {
-      console.log("there was invoke error1 : " + e);
       if(e == messages.ACTION_MISSING_ERROR){
-
         console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
         getAction(req.params.namespace, req.params.actionName, req)
         .then((action)=>{
@@ -77,18 +90,14 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
                    console.log("action " + req.params.actionName + " registered: " + JSON.stringify(result));
                    client.invoke(req.params.actionName, req.body)
                    .then((result) => {
-                      console.log("Invoke result: " + JSON.stringify(result));
-                      var response = buildResponse(req, start, result);
-                       console.log("Invoke response: " + JSON.stringify(response));
-                      res.send(response);
+                	   storeAndRespond(result);
                    })
                    .catch(function(error) {
                      console.log("Invoke error: " + error.error);
-
-                var iResponse = buildResponse(req, start, {}, error);
-                console.log("returning: " + JSON.stringify(iResponse));
+	                 var iResponse = buildResponse(req, start, {}, error);
+	                 console.log("returning: " + JSON.stringify(iResponse));
                      res.status(502).send(iResponse);
-                        console.log("done");
+                     console.log("done");
                      return;
                    });
                 })
@@ -109,10 +118,10 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 
         })
         .catch(function (err) {
-                        console.log("action get error: " + err);
-                        res.status(404).send(err);
-                        return;
-            });
+            console.log("action get error: " + err);
+            res.status(404).send(err);
+            return;
+        });
 
       } else if(e == messages.TOTAL_CAPACITY_LIMIT){
         console.log("Maximal local capacity reached, delegating action invoke to bursting ow service");
@@ -120,7 +129,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
         if(burstOWService){
           client.request("POST", burstOWService + req.path, req.body).then(function(result){
             console.log("--- RESULT: " + JSON.stringify(result));
-            res.send(result);
+            storeAndRespond(result);
           }).catch(function(e) {
             console.log("--- ERROR: " + JSON.stringify(e));
             res.status(404).send(e);
@@ -189,7 +198,7 @@ router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
     var start = new Date().getTime();
     
     client.request("DELETE", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
-      client.delete(actionName);
+      client.delete(req.params.actionName);
       	if(burstOWService){
           client.request("DELETE", burstOWService + req.path, req.body).then(function(deleted){
             res.send(buildResponse(req, start, result));

@@ -16,7 +16,7 @@ var request = require('request');
 /*
  * Proxy to global openwhisk specified by OPENWHISK_HOST environment variable
  */
-router.use('/namespaces/:namespace*', function(req, res) {
+router.use('*', function(req, res) {
   var url = openwhiskHost + req.originalUrl;
   console.log("url: " + url);
   console.log("delegating " + req.method + " to " + url);

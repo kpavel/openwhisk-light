@@ -181,7 +181,7 @@ class LocalClient {
 
   start_preemption(){
     const that = this;
-    console.log("openwhisklocal settings: " + JSON.stringify(config));
+    console.log("settings: " + JSON.stringify(config));
 
     const preeemptionPeriod = config.preeemptionPeriod || 300;     // how often to check whether containers should be stopped
     const preemption_high_percent = config.preemption_high_percent || 0.75;

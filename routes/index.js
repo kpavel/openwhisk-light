@@ -27,7 +27,7 @@ var request = require('request');
 var url = require('url');
 
 var PouchDB = require('pouchdb');
-var db = new PouchDB('owlocal.db');
+var db = new PouchDB('owl.db');
 
 router.use(bodyParser.json());
 

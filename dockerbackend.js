@@ -407,6 +407,8 @@ class DockerBackend {
 
     return new Promise(function(resolve,reject) {
       that.getActionContainer(actionName).then((actionContainer)=>{
+        // append params from action metadata
+        that.actions[actionName].parameters.forEach(function(param) { params[param.key]=param.value; });
         if(actionContainer.state == "running"){
           that.request("POST", "http://" + actionContainer.address + ":8080/run", {"value": params}).then(function(result){
             actionContainer['used'] = process.hrtime()[0];

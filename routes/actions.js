@@ -228,7 +228,16 @@ function invokeHandler(req, res) {
  * Update local actions registry
  * Update bursting service actions registry
  */
-router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
+router.get('/namespaces/:namespace/actions/:actionName', getHandler);
+router.get('/namespaces/:namespace/actions/:packageName/:actionName', getHandlerWithPackage);
+
+function getHandlerWithPackage(req, res) {
+  // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
+  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
+  getHandler(req, res);
+}
+
+function getHandler(req, res) {
 	console.log("BODY: " + JSON.stringify(req.body));
 	var start = new Date().getTime();
 
@@ -263,7 +272,7 @@ router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
         console.log("action get error: " + err);
         processErr(req, res, err);
 	});
-});
+}
 
 /*
  * Delegate action delete to openwhisk global
@@ -271,7 +280,16 @@ router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
  * delete action from local registry
  * delete action from bursting service
  */
-router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
+router.delete('/namespaces/:namespace/actions/:actionName', deleteHandler);
+router.delete('/namespaces/:namespace/actions/:packageName/:actionName', deleteHandlerWithPackage);
+
+function deleteHandlerWithPackage(req, res) {
+  // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
+  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
+  deleteHandler(req, res);
+}
+
+function deleteHandler(req, res) {
     var api_key = from_auth_header(req);
     var start = new Date().getTime();
     
@@ -291,7 +309,7 @@ router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
         console.log("--- ERROR: " + JSON.stringify(e));
         processErr(req, res, e);
       });
-});
+}
 
 function getAction(namespace, actionName, req){
     var api_key = from_auth_header(req);

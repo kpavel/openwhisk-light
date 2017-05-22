@@ -27,7 +27,10 @@ var request = require('request');
 var url = require('url');
 
 var PouchDB = require('pouchdb');
+PouchDB.plugin(require('pouchdb-find'));
+
 var db = new PouchDB('owl.db');
+
 
 var uuid = require("uuid");
 

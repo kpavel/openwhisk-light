@@ -13,38 +13,31 @@ var db = new PouchDB('owl.db');
 var _ = require("underscore");
 
 var stringify = require('json-stringify-safe');
+PouchDB.plugin(require('pouchdb-find'));
+
+db.createIndex({
+  index: {fields: ['activation.start']}
+}).then((res)=>{console.log("indexing res: " + JSON.stringify(res));}).catch((err)=>{console.log("indexing error: " + err)});
+
 
 router.use(bodyParser.json());
 
 // TODO
 router.get('/namespaces/:namespace/activations', function(req, res) {
-	console.log("REQ: " + stringify(req));
+//	console.log("REQ: " + stringify(req));
 	console.log("------in activations list with " + req.originalUrl);
 	
-	db.allDocs({
-		  include_docs: true,
-		  limit: req.query.limit
-		}).then(function (result) {
-        console.log("res: " + JSON.stringify(result));
-        
-//        result = _.map(result.rows, function(activation){
-//        	var doc = activation.doc;
-//        	doc["version"] = doc._rev;
-//        	
-//        	doc["activationId"] = doc._id;
-//        	
-//        	doc = _.omit(doc, '_id', '_rev', 'subject', 'response');
-//        	return doc;
-//        });
-        
-        result = _.pluck(result.rows, 'doc');
-        result = _.pluck(result, 'activation');
+	db.find({
+	  selector: {
+	    'activation.start': {$gte: null}
+	  },
+	  sort: [{'activation.start': 'desc'}]
+	}).then((result)=>{
+		console.log("find response: " + JSON.stringify(result));
+		result = _.pluck(result.docs, 'activation');
         console.log("res after pluck: " + JSON.stringify(result));
         res.send(result);
-    }).catch(function (err) {
-        console.log(err);
-        res.status(502).send(buildResponse(req, start, {}, err));
-    });	
+	}).catch((err)=>{console.log("find error: " + err)});	
 });
 
 router.get('/namespaces/:namespace/activations/:activationid', function(req, res) {
@@ -55,7 +48,7 @@ router.get('/namespaces/:namespace/activations/:activationid', function(req, res
         res.send(result.activation);
     }).catch(function (err) {
         console.log(err);
-        res.status(502).send(buildResponse(req, start, {}, err));
+        res.status(502).send(buildResponse(req, err));
     });	
 });
 
@@ -67,7 +60,7 @@ router.get('/namespaces/:namespace/activations/:activationid/logs', function(req
         res.send({logs: result.activation.logs});
     }).catch(function (err) {
         console.log(err);
-        res.status(502).send(buildResponse(req, start, {}, err));
+        res.status(502).send(buildResponse(req, err));
     });	
 });
 
@@ -79,14 +72,11 @@ router.get('/namespaces/:namespace/activations/:activationid/result', function(r
         res.send(result.activation.response);
     }).catch(function (err) {
         console.log(err);
-        res.status(502).send(buildResponse(req, start, {}, err));
+        res.status(502).send(buildResponse(req, err));
     });	
 });
 
-function buildResponse(req, start, result, error){
-  var end = new Date().getTime();
-  var response;
-  if(error !== undefined){
+function buildResponse(req, error){
     console.log("error.error.error: " + error.error.error);
     response = {
         "result": {
@@ -95,48 +85,12 @@ function buildResponse(req, start, result, error){
         "status": "action developer error",
         "success": false
     };
-  }else{
-	if(req.query.result === "true"){
-		return result;
-	}else{
-	    response = {
-	        result,
-	        "status": "success",
-	        "success": true
-	    };
-	}
-  }
-  
-  
-  
-//  {
-//	  "name": "hellonj",
-//	  "activationId": "06986892a4b34065ab4bc3e38ba3bc06",
-//	  "publish": false,
-//	  "annotations": [{
-//	    "key": "limits",
-//	    "value": {
-//	      "timeout": 120000,
-//	      "memory": 256,
-//	      "logs": 10
-//	    }
-//	  }, {
-//	    "key": "path",
-//	    "value": "kpavel@il.ibm.com_uspace/hellonj"
-//	  }],
-//	  "version": "0.0.11",
-//	  "namespace": "kpavel@il.ibm.com_uspace"
-//	}
 
   return {
-    duration: (end - start),
-    end,
-    logs: [],
     name: req.params.actionName,
     namespace: req.params.namespace,
     "publish": false,
     response,
-    start,
     "subject": "kpavel@il.ibm.com",
     "version": "0.0.4"
   }

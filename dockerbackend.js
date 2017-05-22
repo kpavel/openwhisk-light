@@ -540,7 +540,7 @@ class DockerBackend {
             return reject(err);
           }
 
-          docker.modem.followProgress(stream, (err, output) => {
+          that.docker.modem.followProgress(stream, (err, output) => {
             if(err){
               console.log("Error pulling docker image: " + JSON.stringify(err));
               return reject(err);

@@ -64,7 +64,7 @@ router.get('/namespaces/:namespace/activations/:activationid/logs', function(req
 	  
 	db.get(req.params.activationid).then(function (result) {
         console.log("res: " + JSON.stringify(result));
-        res.send({logs: result.logs});
+        res.send({logs: result.activation.logs});
     }).catch(function (err) {
         console.log(err);
         res.status(502).send(buildResponse(req, start, {}, err));
@@ -76,7 +76,7 @@ router.get('/namespaces/:namespace/activations/:activationid/result', function(r
 	  
 	db.get(req.params.activationid).then(function (result) {
         console.log("res: " + JSON.stringify(result));
-        res.send(result.response);
+        res.send(result.activation.response);
     }).catch(function (err) {
         console.log(err);
         res.status(502).send(buildResponse(req, start, {}, err));

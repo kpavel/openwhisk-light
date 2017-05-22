@@ -97,7 +97,7 @@ class DockerBackend {
         dockerurl = dockerurl.substring(dockerurl.length-1);
     }
 
-    const host = dockerurl;
+    const host = urllib.parse(dockerurl).hostname;
     const port = urllib.parse(dockerurl).port || 2375;
 
     if (!host && !socketPath) {

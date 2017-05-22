@@ -27,15 +27,18 @@ router.get('/namespaces/:namespace/activations', function(req, res) {
 		}).then(function (result) {
         console.log("res: " + JSON.stringify(result));
         
-        result = _.map(result.rows, function(activation){
-        	var doc = activation.doc;
-        	doc["version"] = doc._rev;
-        	
-        	doc["activationId"] = doc._id;
-        	
-        	doc = _.omit(doc, '_id', '_rev', 'subject', 'response');
-        	return doc;
-        });
+//        result = _.map(result.rows, function(activation){
+//        	var doc = activation.doc;
+//        	doc["version"] = doc._rev;
+//        	
+//        	doc["activationId"] = doc._id;
+//        	
+//        	doc = _.omit(doc, '_id', '_rev', 'subject', 'response');
+//        	return doc;
+//        });
+        
+        result = _.pluck(result.rows, 'doc');
+        result = _.pluck(result, 'activation');
         console.log("res after pluck: " + JSON.stringify(result));
         res.send(result);
     }).catch(function (err) {
@@ -49,12 +52,7 @@ router.get('/namespaces/:namespace/activations/:activationid', function(req, res
 	  
 	db.get(req.params.activationid).then(function (result) {
         console.log("res: " + JSON.stringify(result));
-        delete result._rev;
-        delete result._id;
-        
-        result["activationId"] = req.params.activationid;
-        console.log("res after pluck: " + JSON.stringify(result));
-        res.send(result);
+        res.send(result.activation);
     }).catch(function (err) {
         console.log(err);
         res.status(502).send(buildResponse(req, start, {}, err));

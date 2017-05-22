@@ -2,6 +2,8 @@
 
 OpenWhisk-Light (OWL) is a lightweight runtime surfacing the standard OpenWhisk API and designed to run OpenWhisk actions on a local Docker engine, typically at the edge of the network (e.g., on IoT gateways), while using a centralized OpenWhisk cloud service as a 'master' repository and catalog of actions.
 
+**NOTICE**: OWL is an early prototype, not suitable for production use. The intention is to consider contributing it to Apache OpenWhisk once it becomes a bit more mature.
+
 ## Motivation and Approach
 
 OpenWhisk-Light (OWL) serves two main goals:

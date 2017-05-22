@@ -48,6 +48,10 @@ If this is a consequent creation of OWL container and Docker complains that it a
 ``` sh
 $ docker logs owl
 ```
+Pull & tag the base image needed for the action (e.g., nodejs6). This needs to be done only once per base image.
+``` sh
+$ docker pull openwhisk/nodejs6action -t nodejs6action
+```
 Create action (optional)
 ``` sh
 $ wsk action create owl-test --kind nodejs:6 openwhisk-light/owl-test.js

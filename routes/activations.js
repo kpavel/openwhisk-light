@@ -9,7 +9,7 @@ const config = require("./../config.js") || {}; // holds node specific settings,
 
 
 var PouchDB = require('pouchdb');
-var db = new PouchDB('owlocal.db');
+var db = new PouchDB('owl.db');
 var _ = require("underscore");
 
 var stringify = require('json-stringify-safe');

@@ -1,15 +1,15 @@
 {
-  "name": "openwhisk-local",
+  "name": "openwhisk-light",
   "version": "1.0.0",
   "description": "",
-  "main": "openwhisklocal.js",
+  "main": "openwhisklight.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node openwhisklocal.js"
+    "start": "node openwhisklight.js"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.ibm.com:elliot/openwhisk-local.git"
+    "url": "git@github.com:kpavel/openwhisk-light.git"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +22,7 @@
     "express": "^4.15.2",
     "openwhisk": "^3.5.1",
     "os": "^0.1.1",
+    "pouchdb": "*",
     "readable-stream": "^2.2.9",
     "request": "^2.81.0",
     "request-promise": "^4.2.1",

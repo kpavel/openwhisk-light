@@ -1,6 +1,4 @@
-# openwhisk-light
-
-OpenWhisk-Light (OWL) is a lightweight runtime surfacing the standard OpenWhisk API and designed to run OpenWhisk actions on a local Docker engine, typically at the edge of the network (e.g., on IoT gateways), while using a centralized OpenWhisk cloud service as a 'master' repository and catalog of actions.
+**OpenWhisk-Light (OWL)** is a lightweight runtime surfacing the standard OpenWhisk API and designed to run OpenWhisk actions on a local Docker engine, typically at the edge of the network (e.g., on IoT gateways), while using a centralized OpenWhisk cloud service as a 'master' repository and catalog of actions.
 
 **NOTICE**: OWL is an early prototype, not suitable for production use. The intention is to consider contributing it to Apache OpenWhisk once it becomes a bit more mature.
 
@@ -34,9 +32,9 @@ Create and/or identify the Docker network that will be used for communication be
 $ docker network create owl-net
 $ docker network inspect owl-net
 ```
-Identify the IP of the gateway - e.g., 172.21.0.1. This is the IP you need to specify in 'DOCKER_HOST' below. Verify that the Docker API is accessible:
+Identify the IP of the gateway - e.g., 172.21.0.1. This is the IP you need to specify in 'DOCKER_HOST' below. Verify that the Docker remote API is enabled and accessible:
 ``` sh
-$ docker -H 172.21.0.1:2375 info
+$ docker -H tcp://172.21.0.1:2375 info
 ```
 Verify that the wsk CLI is properly configured (the following command does not return errors):
 ``` sh
@@ -105,6 +103,7 @@ Similarly to centralized OpenWhisk in the cloud, OWL attempts to minimize the la
 - totalCapacity: total number of containers allowed to run on a single Docker host simultaneously
 - preemption_high_percent: high watermark, indicating above which percent of totalCapacity we should start cleaning up idle containers
 - preemption_low_percent: low watermark, indicating below which percent of totalCapacity we should reach in order to stop cleaning up idle containers.
+
 For example, if totalCapacity is 8 and watermarks are 70% and 40%, cleanup of idle containers will start when there are 6 containers running (above 8*70%=5.6), and will stop once the number of running containers decreases to 3 (below 8*40%=3.2). Cleanup applies to containers with longest idle time first.
 
 

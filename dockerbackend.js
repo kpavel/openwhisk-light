@@ -54,7 +54,7 @@ function PrefixStream (prefix) {
 };
 
 
-class LocalClient {
+class DockerBackend {
 
   constructor (options) {
     this.docker = new Docker(this.parse_options(options));
@@ -590,4 +590,4 @@ class LocalClient {
 
 }
 
-module.exports = LocalClient;
+module.exports = DockerBackend;

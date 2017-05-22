@@ -3,7 +3,7 @@ var router = express.Router();
 var openwhisk = require('openwhisk');
 var bodyParser = require('body-parser');
 
-const LocalClient = require('./../localclient.js');
+const DockerBackend = require('./../dockerbackend.js');
 const messages = require('./../messages');
 
 const config = require("./../config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
@@ -20,7 +20,7 @@ var openwhiskApi = process.env.OPENWHISK_API || function() {
 console.log("DOCKERHOST: " + dockerhost);
 console.log("OPENWHISK_API: " + openwhiskApi);
 
-var client = new LocalClient({dockerurl: dockerhost});
+var backend = new DockerBackend({dockerurl: dockerhost});
 var stringify = require('json-stringify-safe');
 
 var request = require('request');
@@ -39,16 +39,16 @@ router.use(bodyParser.json());
  * Create activation in db
  * 		if not blocking respond with activation
  * 
- * Invoke action on openwhisk local client
- * 		if client throws "action missing" exception
+ * Invoke action on openwhisk local Docker backend
+ * 		if backend throws "action missing" exception
  * 			get specified action from global openwhisk
  * 			update local action registry
  * 			update bursting service action registry
- * 			invoke action on openwhisk local client and return result
+ * 			invoke action on openwhisk local Docker backend and return result
  * 			if blocking
  * 				update activation
  * 
- * 		if client throws "total capacity limit" exception
+ * 		if backend throws "total capacity limit" exception
  * 			delegate action to bursting service
  * 			update activation
  * 			if blocking
@@ -126,7 +126,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 
   
   createActivationAndRespond(req, res, start).then((activation) => {
-	  client.invoke(req.params.actionName, req.body)
+	  backend.invoke(req.params.actionName, req.body)
 	    .then((result) => {
 	    	updateAndRespond(activation, result);
 	    })
@@ -138,10 +138,10 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	                console.log("got action: " + JSON.stringify(action));
 	                console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 
-	                client.create(req.params.actionName, action)
+	                backend.create(req.params.actionName, action)
 	                .then((result) => {
 	                   console.log("action " + req.params.actionName + " registered: " + JSON.stringify(result));
-	                   client.invoke(req.params.actionName, req.body)
+	                   backend.invoke(req.params.actionName, req.body)
 	                   .then((result) => {
 	                	   updateAndRespond(activation, result);
 	                   })
@@ -156,7 +156,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	                })
 
 	              if(burstOWService){
-	                client.request("PUT", burstOWService + req.path, req.body).then(function(result){
+	                backend.request("PUT", burstOWService + req.path, req.body).then(function(result){
 	                  console.log("--- RESULT: " + JSON.stringify(result));
 	                  updateAndRespond(activation, result);
 	                }).catch(function(e) {
@@ -171,10 +171,11 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	        });
 
 	      } else if(e == messages.TOTAL_CAPACITY_LIMIT){
-	        console.log("Maximal local capacity reached, delegating action invoke to bursting ow service");
+	        console.log("Maximal local capacity reached.");
 
 	        if(burstOWService){
-	          client.request("POST", burstOWService + req.path, req.body).then(function(result){
+	          console.log("Delegating action invoke to bursting ow service");
+	          backend.request("POST", burstOWService + req.path, req.body).then(function(result){
 	            console.log("--- RESULT: " + JSON.stringify(result));
 	            updateAndRespond(activation, result);
 	          }).catch(function(e) {
@@ -216,12 +217,12 @@ router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	    console.log("got action: " + JSON.stringify(action));
 	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 
-        client.create(req.params.actionName, action)
+        backend.create(req.params.actionName, action)
         .then((result) => {
            console.log("action " + req.params.actionName + " registered");
 
            if(burstOWService){
-             client.request("PUT", burstOWService + req.path, req.body).then(function(result){
+             backend.request("PUT", burstOWService + req.path, req.body).then(function(result){
                console.log("--- RESULT: " + JSON.stringify(result));
                res.send(action);
              }).catch(function(e) {
@@ -253,10 +254,10 @@ router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
     var api_key = from_auth_header(req);
     var start = new Date().getTime();
     
-    client.request("DELETE", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
-      client.delete(req.params.actionName);
+    backend.request("DELETE", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+      backend.delete(req.params.actionName);
       	if(burstOWService){
-          client.request("DELETE", burstOWService + req.path, req.body).then(function(deleted){
+          backend.request("DELETE", burstOWService + req.path, req.body).then(function(deleted){
             res.send(buildResponse(req, start, result));
           }).catch(function(e) {
             console.log("--- ERROR deleting action in bursting service: " + e);

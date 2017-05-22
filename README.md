@@ -87,8 +87,8 @@ Notice that the "real" time in the local invocation is shorter by a factor of 15
 
 Most of the OpenWhisk REST API calls supported by OWL are simply forwarded "as is" to the centralized OpenWhisk service in the cloud. In fact, this is the default behavior, unless there is an explicit implementation overriding a certain http route in [routes/actions.js](routes/actions.js) or [routes/activations.js](routes/activations.js) - which currently includes the following operations:
 - invoke action: invoke a given action locally (see below).
-- delete action: in addition to deleting a given action from the centralized catalog, clean it up from the OWL in-memory cache of actions metadata
 - get action: in addition to retrieving action metadata and code from the centralized OpenWhisk catalog, keep it in the local in-memory cache of OWL
+- delete action: in addition to deleting a given action from the centralized catalog, clean it up from the OWL in-memory cache of actions metadata
 - activations: show activations records for local action invocations (kept in a local PouchDB)
 
 ## Action invocation flow
@@ -104,7 +104,7 @@ Similarly to centralized OpenWhisk in the cloud, OWL attempts to minimize the la
 - preemption_high_percent: high watermark, indicating above which percent of totalCapacity we should start cleaning up idle containers
 - preemption_low_percent: low watermark, indicating below which percent of totalCapacity we should reach in order to stop cleaning up idle containers.
 
-For example, if totalCapacity is 8 and watermarks are 70% and 40%, cleanup of idle containers will start when there are 6 containers running (above 8*70%=5.6), and will stop once the number of running containers decreases to 3 (below 8*40%=3.2). Cleanup applies to containers with longest idle time first.
+For example, if totalCapacity is 8 and watermarks are 70% and 40%, cleanup of idle containers will start when there are 6 containers running (above 8\*70%=5.6), and will stop once the number of running containers decreases to 3 (below 8\*40%=3.2). Cleanup applies to containers with longest idle time first.
 
 
 ## Extensions and future work

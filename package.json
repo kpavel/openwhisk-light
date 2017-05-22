@@ -27,6 +27,7 @@
     "readable-stream": "^2.2.9",
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
+    "retry-as-promised": "^2.2.0",
     "rwlock": "^5.0.0",
     "split": "^1.0.0",
     "stream": "0.0.2",

@@ -181,7 +181,6 @@ class DockerBackend {
 
   start_preemption(){
     const that = this;
-    console.log("settings: " + JSON.stringify(config));
 
     const preeemptionPeriod = config.preeemptionPeriod || 300;     // how often to check whether containers should be stopped
     const preemption_high_percent = config.preemption_high_percent || 0.75;
@@ -228,8 +227,8 @@ class DockerBackend {
                 return ((currentTime - o.used) / factor);
               }).reverse();
 
-              console.log("-need to stop " + (sortedContainers.length - nodes * preemptionLowThresholdPerHost) + " from " + sortedContainers.length);
-              sortedContainers = sortedContainers.slice(0, sortedContainers.length - nodes * preemptionLowThresholdPerHost);
+              console.log("-need to stop " + (sortedContainers.length - Math.floor(nodes * preemptionLowThresholdPerHost)) + " from " + sortedContainers.length);
+              sortedContainers = sortedContainers.slice(0, sortedContainers.length - Math.floor(nodes * preemptionLowThresholdPerHost));
 
               var fnStop = function stop(containerInfo){
                 return new Promise((resolve) => {
@@ -456,9 +455,15 @@ class DockerBackend {
     var that = this;
 
     return new Promise((resolve, reject) => {
+    	
+	  if(!that.actions[actionName]){
+        //no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
+        return reject(messages.ACTION_MISSING_ERROR);
+      }
+    	
       var actionContainers = that.containers[actionName] || [];
 
-      // locaking containers object
+      // locking containers object
       that.containersLock.writeLock(function (release) {
 
         ///////
@@ -501,23 +506,16 @@ class DockerBackend {
           // Releasing and returning stopped container asap
           resolve(actionContainers[0]);
         }else{
-          //no free container, creating a new one
-          var action = that.actions[actionName];
-          if(!action){
-            //no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
-            release();
-            reject(messages.ACTION_MISSING_ERROR);
-          }else{
-            // Reserving the entry in cash to release lock asap
-            var actionContainer = {state: "reserved", busy: process.hrtime()[0], used: process.hrtime()[0], actionName};
-            that.containers[actionName].push(actionContainer);
-            release();
+          // no free container, creating a new one
+          // Reserving the entry in cash to release lock asap
+          var actionContainer = {state: "reserved", busy: process.hrtime()[0], used: process.hrtime()[0], actionName};
+          that.containers[actionName].push(actionContainer);
+          release();
 
-            that.createContainer(action).then((container)=>{
-              actionContainer.container = container;
-              resolve(actionContainer);
-            });
-          }
+          that.createContainer(actionName).then((container)=>{
+            actionContainer.container = container;
+            resolve(actionContainer);
+          });
         }
       });
     });
@@ -567,8 +565,9 @@ class DockerBackend {
         delete this.actions[actionName];
   };
 
-  createContainer(action){
+  createContainer(actionName){
     var that = this;
+    var action = this.actions[actionName];
     var image = action.exec.image || action.exec.kind.replace(":", "") + "action";
     return new Promise((resolve, reject) => {
       that.docker.createContainer({

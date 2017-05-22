@@ -8,5 +8,9 @@ module.exports = {
     "nodejs:6": 1,
     "java": 3,
     "blackbox": 5
+  },
+  retries: {
+	  timeout: 30000, //msec
+	  number: 10
   }
 };

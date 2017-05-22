@@ -36,6 +36,20 @@ var uuid = require("uuid");
 
 router.use(bodyParser.json());
 
+const retry = require('retry-as-promised')
+
+var retryOptions = {
+  max: 5, 
+  timeout: 12000, 
+  match: [ 
+    messages.TOTAL_CAPACITY_LIMIT
+  ],
+  backoffBase: 15000,
+  backoffExponent: 1, 
+  report: function(msg){ console.log(msg, ""); }, 
+  name:  'Action invoke' 
+};
+
 /*
  * OpenWhisk action invoke local implementation
  * 
@@ -63,7 +77,6 @@ router.use(bodyParser.json());
  * 
  */
 router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
-  console.log("req: " + stringify(req));
   console.log("PATH: " + req.path);
   console.log("params: " + JSON.stringify(req.params));
   console.log("namespace: " + req.params.namespace);
@@ -81,7 +94,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	  var rc = 200;
 	  
 	  if(err !== undefined){
-	    console.log("err.error.error: " + err.error.error);
+	    console.log("err.error.error:" + JSON.stringify(err));
 	    response = {
 	        "result": {
 	             error: err.error.error
@@ -114,21 +127,30 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 		   	}
 	   	   }
 	      }).catch(function (err) {
-	   	   console.log(err);
-		   	if(req.query.blocking === "true"){
-		   		console.log("responding: " + JSON.stringify(response));
-		   		res.status(502).send(buildResponse(req, start, {}, err));
-		   	}
+	    	  processErr(req, res, err);
 	      });
-		}).then(function(response) {
-			console.log("rrrrrrrr" + response);
 		}).catch(function (err) {
-		  console.log(err);
+			processErr(req, res, err);
 		});
-  }
+    }
 
   
-  createActivationAndRespond(req, res, start).then((activation) => {
+    createActivationAndRespond(req, res, start).then((activation) => {
+	  function invokeWithRetries(){
+		console.log("starting invoke with retries");
+      	retry(function() {return backend.invoke(req.params.actionName, req.body)}, retryOptions).then((result)=>{
+  		  console.log("=========>>>> retry resolved  " + result);
+  		  updateAndRespond(activation, result);
+  		}).catch((e)=>{
+  			console.log("=========>>>> retry catched  " + e);
+  			if(e == messages.TOTAL_CAPACITY_LIMIT){
+  				processErr(req, res, err);
+  			}else{
+  				updateAndRespond(activation, {}, e);
+  			}
+  		});
+	  }
+	  
 	  backend.invoke(req.params.actionName, req.body)
 	    .then((result) => {
 	    	updateAndRespond(activation, result);
@@ -138,42 +160,33 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	        console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
 	        getAction(req.params.namespace, req.params.actionName, req)
 	        .then((action)=>{
-	                console.log("got action: " + JSON.stringify(action));
-	                console.log("Registering action under openwhisk edge " + JSON.stringify(action));
+                console.log("got action: " + JSON.stringify(action));
+                console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 
-	                backend.create(req.params.actionName, action)
-	                .then((result) => {
-	                   console.log("action " + req.params.actionName + " registered: " + JSON.stringify(result));
-	                   backend.invoke(req.params.actionName, req.body)
-	                   .then((result) => {
-	                	   updateAndRespond(activation, result);
-	                   })
-	                   .catch(function(error) {
-	                     console.log("Invoke error: " + error.error);
-		                 return updateAndRespond(activation, {}, error);
-	                   });
-	                })
-	                .catch(function(e) {
-	                  console.log("Error registering action: " + e);
-	                  updateAndRespond(activation, {}, e);
-	                })
+                backend.create(req.params.actionName, action)
+                .then((result) => {
+                   console.log("action " + req.params.actionName + " registered");
+                   invokeWithRetries();
+                })
+                .catch(function(e) {
+                  console.log("Error registering action: " + e);
+                  updateAndRespond(activation, {}, e);
+                })
 
-	              if(burstOWService){
-	                backend.request("PUT", burstOWService + req.path, req.body).then(function(result){
-	                  console.log("--- RESULT: " + JSON.stringify(result));
-	                  updateAndRespond(activation, result);
-	                }).catch(function(e) {
-	                  console.log("--- ERROR registering action in bursting!: " + JSON.stringify(e));
-	                  updateAndRespond(activation, {}, e);
-	                });
-	              }
-
+              if(burstOWService){
+                backend.request("PUT", burstOWService + req.path, req.body).then(function(result){
+                  console.log("--- RESULT: " + JSON.stringify(result));
+                  updateAndRespond(activation, result);
+                }).catch(function(e) {
+                  console.log("--- ERROR registering action in bursting!: " + JSON.stringify(e));
+                  updateAndRespond(activation, {}, e);
+                });
+              }
 	        })
 	        .catch(function (err) {
 	        	updateAndRespond(activation, {}, err);
 	        });
-
-	      } else if(e == messages.TOTAL_CAPACITY_LIMIT){
+	      }else if(e == messages.TOTAL_CAPACITY_LIMIT){
 	        console.log("Maximal local capacity reached.");
 
 	        if(burstOWService){
@@ -186,19 +199,16 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
 	            updateAndRespond(activation, {}, e);
 	          });
 	        }else{
-	          updateAndRespond(activation, {}, e);
+	          invokeWithRetries();
 	        }
 	      }else{
 	    	  console.log("Unknown error occured");
 	    	  updateAndRespond(activation, {}, e);
 	      }
 	    })
-	  
   })
   .catch(function (err) {
-	  console.log(1232);
-	   console.log(err);
-	   res.status(502).send(buildResponse(req, start, {}, err));
+	  processErr(req, res, err);
   });
   
 });
@@ -230,7 +240,7 @@ router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
                res.send(action);
              }).catch(function(e) {
                console.log("--- ERROR registering action in bursting service: " + e);
-               res.status(502).send(buildResponse(req, start, {}, e));
+               processErr(req, res, e);
              });
            }else{
          	 res.send(action);
@@ -238,12 +248,12 @@ router.get('/namespaces/:namespace/actions/:actionName', function(req, res) {
         })
         .catch(function(e) {
           console.log(e);
-          res.status(502).send(buildResponse(req, start, {}, e));
+          processErr(req, res, e);
         })
 	})
 	.catch(function (err) {
         console.log("action get error: " + err);
-        res.status(502).send(buildResponse(req, start, {}, err));
+        processErr(req, res, err);
 	});
 });
 
@@ -261,17 +271,17 @@ router.delete('/namespaces/:namespace/actions/:actionName', function(req, res) {
       backend.delete(req.params.actionName);
       	if(burstOWService){
           backend.request("DELETE", burstOWService + req.path, req.body).then(function(deleted){
-            res.send(buildResponse(req, start, result));
+            res.send(result);
           }).catch(function(e) {
             console.log("--- ERROR deleting action in bursting service: " + e);
-            res.status(502).send(buildResponse(req, start, {}, e));
+            processErr(req, res, e);
           });
         }else{
-        	res.send(buildResponse(req, start, result));
+        	res.send(result);
         }
       }).catch(function(e) {
         console.log("--- ERROR: " + JSON.stringify(e));
-        res.status(502).send(buildResponse(req, start, {}, e));
+        processErr(req, res, e);
       });
 });
 
@@ -375,5 +385,15 @@ function buildResponse(req, start, result, error){
   }
 }
 
+function processErr(req, res, err){
+	console.log(err);
+//   	if(req.query.blocking === "true"){
+   		console.log("err.error.error: " + err.error.error);
+   		res.status(404).send({
+   			error: err.error.error,
+   			code: -1
+   		});
+//   	}
+}
 
 module.exports = router;

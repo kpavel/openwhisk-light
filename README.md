@@ -88,7 +88,7 @@ Notice that the "real" time in the local invocation is shorter by a factor of 15
 ## OpenWhisk API support
 
 Most of the OpenWhisk REST API calls supported by OWL are simply forwarded "as is" to the centralized OpenWhisk service in the cloud. In fact, this is the default behavior, unless there is an explicit implementation overriding a certain http route in [routes/actions.js](routes/actions.js) or [routes/activations.js](routes/activations.js) - which currently includes the following operations:
-- invoke action: invoke a given action locally (see below). Currently only blocking invocation is supported.
+- invoke action: invoke a given action locally (see below).
 - delete action: in addition to deleting a given action from the centralized catalog, clean it up from the OWL in-memory cache of actions metadata
 - get action: in addition to retrieving action metadata and code from the centralized OpenWhisk catalog, keep it in the local in-memory cache of OWL
 - activations: show activations records for local action invocations (kept in a local PouchDB)
@@ -112,7 +112,7 @@ For example, if totalCapacity is 8 and watermarks are 70% and 40%, cleanup of id
 
 OWL is designed to address several additional non-functional requirements (some of which are currently work-in-progress), including:
 1. Enable local execution on a cluster of hosts. This is already supported with Docker Swarm, taking advantage of its compatibility with the remote Docker API. However, such configuration is currently not optimized to ensure locality between the placement of the action container and the location of the data source (e.g., in cases when there is a desire to pool gateways together, offloading computation between them when necessary).
-2. Enable running OpenWhisk actions on different kinds of hardware architecture, such as ARM-based hardware (e.g., Raspberry Pi). OWL currently assumes that 'base' Docker images used for the 'native' action types (node.js, python, Java, etc) are pre-deployed on each Docker engine. These images can be adjusted to fit the hardware architecture. For 'blackbox' actions, supporting cross-arch protability would require maintaining images built for the different kinds of architecture, and introducing a naming convention to select the proper one when the image is pulled.
+2. Enable running OpenWhisk actions on different kinds of hardware architecture, such as ARM-based hardware (e.g., Raspberry Pi). OWL currently assumes that 'base' Docker images used for the 'native' action types (node.js, python, Java, etc) are pre-deployed on each Docker engine. These images can be adjusted to fit the hardware architecture. For 'blackbox' actions, supporting cross-arch portability would require maintaining images built for the different kinds of architecture, and introducing a naming convention to select the proper one when the image is pulled.
 3. Enable (limited) disconnected operation, when centralized OpenWhisk repository/catalog is not accessible (e.g., in mobile deployments with intermittent connectivity)
 4. Enable multi-tier deployment with "bursting" between tiers when running out of local capacity and there are no idle containers (e.g., individual gateway --> small local cluster --> cloud)
 

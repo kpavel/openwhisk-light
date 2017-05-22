@@ -1,5 +1,5 @@
 module.exports = {
-  preeemptionPeriod: 150,
+  preeemptionPeriod: 10,
   totalCapacity: 5,
   preemption_high_percent: 0.75,
   preemption_low_percent: 0.25,
@@ -10,7 +10,7 @@ module.exports = {
     "blackbox": 5
   },
   retries: {
-	  timeout: 30000, //msec
+	  timeout: 5000, //msec
 	  number: 10
   }
 };

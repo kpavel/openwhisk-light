@@ -76,7 +76,16 @@ var retryOptions = {
  * 		respond with result
  * 
  */
-router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
+router.post('/namespaces/:namespace/actions/:actionName', invokeHandler);
+router.post('/namespaces/:namespace/actions/:packageName/:actionName', invokeHandlerWithPackage);
+
+function invokeHandlerWithPackage(req, res) {
+  // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
+  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
+  invokeHandler(req, res);
+}
+
+function invokeHandler(req, res) {
   console.log("PATH: " + req.path);
   console.log("params: " + JSON.stringify(req.params));
   console.log("namespace: " + req.params.namespace);
@@ -210,8 +219,7 @@ router.post('/namespaces/:namespace/actions/:actionName', function(req, res) {
   .catch(function (err) {
 	  processErr(req, res, err);
   });
-  
-});
+}
 
 /*
  * Action get name. Also currently used to update openwhisk local actions registry

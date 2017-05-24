@@ -34,7 +34,7 @@ var db = new PouchDB('owl.db');
 
 var uuid = require("uuid");
 
-router.use(bodyParser.json());
+router.use(bodyParser.json({limit:'10mb'}));
 
 const retry = require('retry-as-promised')
 

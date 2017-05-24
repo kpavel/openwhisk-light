@@ -54,7 +54,7 @@ $ docker pull openwhisk/nodejs6action -t nodejs6action
 ```
 Create action (optional)
 ``` sh
-$ wsk action create owl-test --kind nodejs:6 openwhisk-light/owl-test.js
+$ wsk action create owl-test --kind nodejs:6 openwhisk-light/test/owl-test.js
 ok: created action owl-test
 ```
 Invoke the action

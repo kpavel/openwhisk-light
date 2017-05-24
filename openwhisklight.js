@@ -6,6 +6,7 @@ var index = require('./routes/actions');
 var activations = require('./routes/activations');
 var proxy = require('./routes/proxy');
 
+app.enable('strict routing');
 
 app.use('/api/v1', index);
 app.use('/api/v1/', activations);

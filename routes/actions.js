@@ -1,5 +1,5 @@
 var express = require('express');
-var router = express.Router();
+var router = express.Router({strict: true});
 var openwhisk = require('openwhisk');
 var bodyParser = require('body-parser');
 

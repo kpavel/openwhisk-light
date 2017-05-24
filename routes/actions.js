@@ -121,7 +121,12 @@ function invokeHandler(req, res) {
 	  }
 	  
 	  db.get(activation.activationId).then(function(activationDoc) {
-		  activationDoc.activation.response = response;
+              var end = new Date().getTime();
+              activationDoc.activation.end = end;
+              activationDoc.activation.duration = (end - activationDoc.activation.start);
+
+              activationDoc.activation.response = response;
+                  
 	      
 	      //store activation in local db
 	      db.put(activationDoc).then(function (doc) {

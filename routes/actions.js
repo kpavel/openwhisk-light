@@ -95,6 +95,8 @@ function invokeHandler(req, res) {
   console.log("headers: " + JSON.stringify(req.headers));
 
   var start = new Date().getTime();
+  this["api_key"] = from_auth_header(req);
+  console.log("API KEY: " + this.api_key);
   
   function updateAndRespond(activation, result, err){
 	  console.log("raw result: " + JSON.stringify(result));
@@ -152,7 +154,7 @@ function invokeHandler(req, res) {
     createActivationAndRespond(req, res, start).then((activation) => {
 	  function invokeWithRetries(){
 		console.log("starting invoke with retries");
-      	retry(function() {return backend.invoke(req.params.actionName, req.body)}, retryOptions).then((result)=>{
+      	retry(function() {return backend.invoke(req.params.actionName, req.body, this.api_key)}, retryOptions).then((result)=>{
   		  console.log("=========>>>> retry resolved  " + result);
   		  updateAndRespond(activation, result);
   		}).catch((e)=>{
@@ -165,7 +167,7 @@ function invokeHandler(req, res) {
   		});
 	  }
 	  
-	  backend.invoke(req.params.actionName, req.body)
+	  backend.invoke(req.params.actionName, req.body, this.api_key)
 	    .then((result) => {
 	    	updateAndRespond(activation, result);
 	    })

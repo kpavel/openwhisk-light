@@ -2,6 +2,7 @@ var express = require('express');
 var app = express();
 
 var port = process.env.PORT || 3000;
+process.env["PORT"]=port;
 var index = require('./routes/actions');
 var activations = require('./routes/activations');
 var proxy = require('./routes/proxy');

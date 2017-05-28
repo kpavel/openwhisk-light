@@ -61,6 +61,7 @@ class DockerBackend {
 
     // in case this environment variable specified this network will be used for action containers.
     this.nwName = process.env.OW_LOCAL_DOCKER_NW_NAME;
+    this.myIP = "unknown";
 
     //e.g. { $ACTION_NAME: [{ state: "created", container: container_object, used: timestamp_seconds... , ] };
     this.containers = {};
@@ -84,6 +85,11 @@ class DockerBackend {
         that.get_number_of_nodes().then((nodes) => {
           that.nodesNumber = nodes;
           that.start_preemption();
+        });
+        console.log('Retrieving my IP');
+        that.get_ip_in_net(this.nwName).then((ip) => {
+          that.myIP = ip;
+          console.log("My IP: " + that.myIP);
         });
       }
     });
@@ -147,6 +153,56 @@ class DockerBackend {
           resolve(that.nwName);
         });
       }
+    });
+  };
+
+  // find our own IP resolvable from the given virtual network
+  // ----
+  // this IP will be passed to the action containers as __OW_API_HOST
+  // flow:
+  // 1) find the subnet of the given virtual network
+  // 2) if we have net interface with IP on that subnet, return this IP
+  // 3) otherwise, return the default gateway of that subnet
+  //    (assuming that we are running on the docker host)
+  get_ip_in_net(nwName) {
+    var that = this;
+    var os = require('os');
+    var ip = require('ip');
+    return new Promise((resolve,reject) => {
+        // get network info
+        that.docker.getNetwork(nwName).inspect((err, networkInfo) => {
+          if(err){
+            console.log("Err: " + JSON.stringify(err));
+            return reject(err);
+          }
+
+          // get subnet of the Docker network with the given name
+          //console.log("net: " + JSON.stringify(networkInfo.IPAM.Config));
+          var subnet = networkInfo.IPAM.Config[0].Subnet;
+          var gateway = networkInfo.IPAM.Config[0].Gateway.split('/')[0];
+          console.log("subnet: " + subnet);
+          // inspect OS settings to find self IP in the above subnet
+          var ifaces = os.networkInterfaces();
+          //console.log(JSON.stringify(ifaces));
+          for (var iface in ifaces) {
+            var iface = ifaces[iface];
+            for (var alias in iface) {
+              var alias = iface[alias];
+              //console.log(JSON.stringify(alias));
+              if ('IPv4' !== alias.family || alias.internal !== false) {
+                continue;
+              }
+              console.log("Found address: " + alias.address);
+              if(ip.cidrSubnet(subnet).contains(alias.address)) {
+                console.log("FOUND match for " + subnet);
+                return resolve(alias.address);
+              }
+            }
+          }
+          // if got here, we are probably running on the host itself
+          console.log("NO match found, returning gateway address: " + gateway);
+          resolve(gateway);
+        });
     });
   };
 
@@ -402,7 +458,7 @@ class DockerBackend {
   // invoke action on CONTAINER
   // return CONTAINER back to containers pool
   // return invoke result
-  invoke(actionName, params){
+  invoke(actionName, params, api_key){
     var that = this;
 
     return new Promise(function(resolve,reject) {
@@ -410,7 +466,7 @@ class DockerBackend {
         // append params from action metadata
         that.actions[actionName].parameters.forEach(function(param) { params[param.key]=param.value; });
         if(actionContainer.state == "running"){
-          that.request("POST", "http://" + actionContainer.address + ":8080/run", {"value": params}).then(function(result){
+          that.request("POST", "http://" + actionContainer.address + ":8080/run", {"value": params, "api_key": api_key, "action_name": actionName, "namespace": "_"}).then(function(result){
             actionContainer['used'] = process.hrtime()[0];
             delete actionContainer.busy;
             return resolve(result);
@@ -425,7 +481,7 @@ class DockerBackend {
           console.log("Container " + JSON.stringify(actionContainer) + " registered as not running, starting container");
           that.start(actionName, actionContainer).then(function(address){
             console.log("--- container started with address: " + JSON.stringify(address));
-            that.request("POST", "http://" + address + ":8080/run", {"value": params}).then(function(result){
+            that.request("POST", "http://" + address + ":8080/run", {"value": params, "api_key": api_key, "action_name": actionName, "namespace":"_"}).then(function(result){
               console.log("invoke request returned with " + result);
               actionContainer['used'] = process.hrtime()[0];
               delete actionContainer.busy;
@@ -575,6 +631,7 @@ class DockerBackend {
       that.docker.createContainer({
         Tty: true, Image: image,
         NetworkMode: that.nwName, 'HostConfig': {NetworkMode: that.nwName, CgroupParent: cgroupParent},
+        Env: ["__OW_API_HOST="+"http://"+this.myIP+":"+process.env.PORT],
         Labels: {"action": action.name}},
         function (err, container) {
           if(err){

@@ -83,6 +83,9 @@ sys	0m0.024s
 ```
 Notice that the "real" time in the local invocation is shorter by a factor of 15-20 compared to the one sending the invocation to the cloud.
 
+[Optional] Use OWL endpoint in configuration of OpenWhisk action nodes in Node-RED flows (e.g., when Node-RED is running in a Docker container on the same host), e.g.:
+![Example Node-RED configuration](owl-nr-flow.png)
+
 ## OpenWhisk API support
 
 Most of the OpenWhisk REST API calls supported by OWL are simply forwarded "as is" to the centralized OpenWhisk service in the cloud. In fact, this is the default behavior, unless there is an explicit implementation overriding a certain http route in [routes/actions.js](routes/actions.js) or [routes/activations.js](routes/activations.js) - which currently includes the following operations:

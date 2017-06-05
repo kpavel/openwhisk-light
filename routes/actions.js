@@ -300,8 +300,8 @@ function deleteHandler(req, res) {
     var api_key = from_auth_header(req);
     var start = new Date().getTime();
     
-    backend.request("DELETE", openwhiskUrl + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
-      backend.delete(req.params.actionName);
+    backend.request("DELETE", openwhiskApi + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+      backend.deleteAction(req.params.actionName);
       	if(burstOWService){
           backend.request("DELETE", burstOWService + req.path, req.body).then(function(deleted){
             res.send(result);

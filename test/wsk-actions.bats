@@ -22,6 +22,16 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
+@test "wsk action get" {
+  run wsk -i action update owl-test --kind nodejs:6 $DIR/owl-test.js
+  diff <(wsk action get owl-test|  	# action JSON from OpenWhisk
+    tail -n +2|  			# remove first line comprising "ok: got action ..."
+    jq '.exec.code' | tr -d '[\"]'| 	# retrieve .exec.code field from JSON, without \"
+    sed -e 's/\\n/\n/g'| 		# replace \n with "real" new-line
+    tr -d '[:space:]')			`# remove white spaces`\
+    <(cat $DIR/owl-test.js | tr -d '[:space:]')	# original action file without white spaces
+}
+
 @test "wsk action invoke owl-test" {
   run bash -c "wsk -i action create owl-test --kind nodejs:6 $DIR/owl-test.js > /dev/null 2>&1"
   run bash -c "wsk -i action invoke owl-test -r -p aa BB | jq '.aa'"

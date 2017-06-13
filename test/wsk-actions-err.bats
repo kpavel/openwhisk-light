@@ -21,3 +21,7 @@ setup() {
   [ "$status" -eq 148 ]
 }
 
+@test "wsk action get non-existent action" {
+  run wsk -i action get owl-non-existent-action
+  [ "$status" -eq 148 ]
+}

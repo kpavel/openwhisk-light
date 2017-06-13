@@ -336,7 +336,7 @@ function getAction(namespace, actionName, req){
 
 function from_auth_header(req) {
   var auth = req.get("authorization");
-  auth = auth.replace("Basic ", "");
+  auth = auth.replace(/basic /i, "");
   auth = new Buffer(auth, 'base64').toString('ascii');
   return auth;
 }

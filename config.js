@@ -13,5 +13,5 @@ module.exports = {
 	  timeout: 5000, //msec
 	  number: 10
   },
-  delegate_on_failure: true
+  delegate_on_failure: false
 };

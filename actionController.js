@@ -1,4 +1,5 @@
 const DockerBackend = require('./dockerbackend.js');
+const DockerBackendWithPreemption = require('./dockerBackendWithPreemption.js');
 const messages = require('./messages');
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 
@@ -8,7 +9,9 @@ var dockerhost = process.env.DOCKER_HOST || function() {
 
 console.log("DOCKERHOST: " + dockerhost);
 
-var backend = new DockerBackend({dockerurl: dockerhost});
+var backend = (config.preemption && config.preemption.enabled == true) ?
+  new DockerBackendWithPreemption({dockerurl: dockerhost}) : new DockerBackend({dockerurl: dockerhost});
+
 var stringify = require('json-stringify-safe');
 
 var url = require('url');

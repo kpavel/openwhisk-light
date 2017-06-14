@@ -1,6 +1,7 @@
 var openwhisk = require('openwhisk');
 
 const DockerBackend = require('./dockerbackend.js');
+const DockerBackendWithPreemption = require('./dockerBackendWithPreemption.js');
 const messages = require('./messages');
 const utils = require('./utils');
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
@@ -16,7 +17,9 @@ var openwhiskApi = process.env.OPENWHISK_API || function() {
 console.log("DOCKERHOST: " + dockerhost);
 console.log("OPENWHISK_API: " + openwhiskApi);
 
-var backend = new DockerBackend({dockerurl: dockerhost});
+var backend = (config.preemption && config.preemption.enabled == true) ?
+  new DockerBackendWithPreemption({dockerurl: dockerhost}) : new DockerBackend({dockerurl: dockerhost});
+
 var stringify = require('json-stringify-safe');
 
 var url = require('url');

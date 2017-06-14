@@ -2,7 +2,7 @@ var openwhisk = require('openwhisk');
 
 const DockerBackend = require('./dockerbackend.js');
 const messages = require('./messages');
-
+const utils = require('./utils');
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 
 var dockerhost = process.env.DOCKER_HOST || function() {
@@ -19,7 +19,6 @@ console.log("OPENWHISK_API: " + openwhiskApi);
 var backend = new DockerBackend({dockerurl: dockerhost});
 var stringify = require('json-stringify-safe');
 
-var request = require('request');
 var url = require('url');
 
 var PouchDB = require('pouchdb');
@@ -178,7 +177,7 @@ function invokeAction(req, res) {
 						}else{
 							if(config.delegate_on_failure){
 								console.log("Delegating action invoke to bursting ow service");
-								backend.request("POST", OPENWHISK_API + req.path, req.body).then(function(result){
+								utils.request("POST", OPENWHISK_API + req.path, req.body).then(function(result){
 									console.log("--- RESULT: " + JSON.stringify(result));
 									updateAndRespond(activation, result);
 								}).catch(function(e) {
@@ -243,7 +242,7 @@ function deleteAction(req, res) {
     var api_key = from_auth_header(req);
     var start = new Date().getTime();
     
-    backend.request("DELETE", openwhiskApi + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+    utils.request("DELETE", openwhiskApi + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
       	backend.deleteAction(req.params.actionName);
         res.send(result);
     }).catch(function(e) {

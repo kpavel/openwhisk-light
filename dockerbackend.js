@@ -2,8 +2,8 @@ var Docker = require('dockerode');
 var urllib = require("url");
 var validator = require('validator');
 
-const rp = require('request-promise')
 const messages = require('./messages');
+var actionproxy = require('./actionproxy');
 
 var cron = require("cron");
 var _ = require("underscore");
@@ -388,7 +388,8 @@ class DockerBackend {
             if(--retries == 0){
               return reject(messages.INIT_TIMEOUT_ERROR);
             }
-            that.request("POST", "http://" + address + ":8080/init", payload ).then((result) =>{
+            // TODO: use 'init' method of 'action' class, hiding the exact arguments passed to proxy
+            actionproxy.init(address, payload).then((result) =>{
               if(!result.OK && result != "OK"){
                 console.log(JSON.stringify(result) + " is not OK");
 
@@ -421,22 +422,6 @@ class DockerBackend {
     });
   }
 
-  request (method, url, body, headers) {
-    const req = this.params(method, url, body);
-    if(headers){
-        req.headers = headers;
-    }
-    return rp(req);
-  }
-
-  params (method, url, body) {
-    return Object.assign({
-      json: true,
-      method: method,
-      url
-    }, {body})
-  }
-
   // using locks to prevent races
 
   // from containers pool get first unused CONTAINER of specified ACTION_NAME
@@ -466,7 +451,8 @@ class DockerBackend {
         // append params from action metadata
         that.actions[actionName].parameters.forEach(function(param) { params[param.key]=param.value; });
         if(actionContainer.state == "running"){
-          that.request("POST", "http://" + actionContainer.address + ":8080/run", {"value": params, "api_key": api_key, "action_name": actionName, "namespace": "_"}).then(function(result){
+          // TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
+          actionproxy.run(actionName, actionContainer.address, api_key, params).then(function(result){
             actionContainer['used'] = process.hrtime()[0];
             delete actionContainer.busy;
             return resolve(result);
@@ -481,7 +467,8 @@ class DockerBackend {
           console.log("Container " + JSON.stringify(actionContainer) + " registered as not running, starting container");
           that.start(actionName, actionContainer).then(function(address){
             console.log("--- container started with address: " + JSON.stringify(address));
-            that.request("POST", "http://" + address + ":8080/run", {"value": params, "api_key": api_key, "action_name": actionName, "namespace":"_"}).then(function(result){
+            // TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
+            actionproxy.run(actionName, address, api_key, params).then(function(result){
               console.log("invoke request returned with " + result);
               actionContainer['used'] = process.hrtime()[0];
               delete actionContainer.busy;

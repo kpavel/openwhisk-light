@@ -12,5 +12,6 @@ module.exports = {
   retries: {
 	  timeout: 5000, //msec
 	  number: 10
-  }
+  },
+  delegate_on_failure: true
 };

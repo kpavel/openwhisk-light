@@ -1,20 +1,12 @@
-var openwhisk = require('openwhisk');
-
 const DockerBackend = require('./dockerbackend.js');
 const messages = require('./messages');
-const utils = require('./utils');
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 
 var dockerhost = process.env.DOCKER_HOST || function() {
     throw "please set the DOCKER_HOST environmental variable, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375";
 }();
 
-var openwhiskApi = process.env.OPENWHISK_API || function() {
-    throw "please set the OPENWHISK_API environmental variable pointing to openwhisk global, e.g. https://openwhisk.ng.bluemix.net/api/v1";
-}();
-
 console.log("DOCKERHOST: " + dockerhost);
-console.log("OPENWHISK_API: " + openwhiskApi);
 
 var backend = new DockerBackend({dockerurl: dockerhost});
 var stringify = require('json-stringify-safe');
@@ -42,6 +34,8 @@ var retryOptions = {
   report: function(msg){ console.log(msg, ""); }, 
   name:  'Action invoke' 
 };
+
+const owproxy = require('./owproxy.js');
 
 /*
  * OpenWhisk action invoke local implementation
@@ -149,12 +143,10 @@ function invokeAction(req, res) {
 	    })
 	    .catch(function(e) {
 	      if(e == messages.ACTION_MISSING_ERROR){
-	        console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
-	        _getAction(req.params.namespace, req.params.actionName, req)
+	        console.log("getting action " + req.params.actionName + " from owproxy");
+	        owproxy.getAction(req)
 	        .then((action)=>{
-                console.log("got action: " + JSON.stringify(action));
                 console.log("Registering action under openwhisk edge " + JSON.stringify(action));
-
                 backend.create(req.params.actionName, action)
                 .then((result) => {
                    console.log("action " + req.params.actionName + " registered");
@@ -177,15 +169,16 @@ function invokeAction(req, res) {
 						}else{
 							if(config.delegate_on_failure){
 								console.log("Delegating action invoke to bursting ow service");
-								utils.request("POST", OPENWHISK_API + req.path, req.body).then(function(result){
+								owproxy.invoke(req).then(function(result){
 									console.log("--- RESULT: " + JSON.stringify(result));
 									updateAndRespond(activation, result);
 								}).catch(function(e) {
 									console.log("--- ERROR: " + JSON.stringify(e));
 									updateAndRespond(activation, {}, e);
 								});
-							}							
-							updateAndRespond(activation, {}, e);
+							}else{
+								updateAndRespond(activation, {}, e);
+							}
 						}
 					})
 	      }else{
@@ -210,9 +203,8 @@ function getAction(req, res) {
 	console.log("BODY: " + JSON.stringify(req.body));
 	var start = new Date().getTime();
 
-	console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
-	_getAction(req.params.namespace, req.params.actionName, req)
-	.then((action)=>{
+	console.log("getting action " + req.params.actionName + " from owproxy");
+	owproxy.getAction(req).then((action)=>{
 	    console.log("got action: " + JSON.stringify(action));
 	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 
@@ -242,28 +234,12 @@ function deleteAction(req, res) {
     var api_key = from_auth_header(req);
     var start = new Date().getTime();
     
-    utils.request("DELETE", openwhiskApi + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
+		owproxy.deleteAction(req).then(function(result){
       	backend.deleteAction(req.params.actionName);
         res.send(result);
     }).catch(function(e) {
         console.log("--- ERROR: " + JSON.stringify(e));
         processErr(req, res, e);
-    });
-}
-
-function _getAction(namespace, actionName, req){
-    var api_key = from_auth_header(req);
-    var ow_client = openwhisk({api: openwhiskApi, api_key});
-
-    return new Promise(function(resolve,reject) {
-        ow_client.actions.get({actionName, namespace})
-            .then(function (action) {
-                console.log("Got action from " + openwhiskApi + ": " + JSON.stringify(action));
-                resolve(action);
-            })
-            .catch((e) => {
-                reject(e);
-            });
     });
 }
 

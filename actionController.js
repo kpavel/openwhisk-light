@@ -4,7 +4,6 @@ const DockerBackend = require('./dockerbackend.js');
 const messages = require('./messages');
 
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
-const burstOWService = process.env.BURST_OW_SERVICE || config.burstOWService; // max number of containers per host
 
 var dockerhost = process.env.DOCKER_HOST || function() {
     throw "please set the DOCKER_HOST environmental variable, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375";
@@ -34,8 +33,8 @@ var uuid = require("uuid");
 const retry = require('retry-as-promised')
 
 var retryOptions = {
-  max: 5, 
-  timeout: 12000, 
+  max: config.retries.number, 
+  timeout: config.retries.timeout, 
   match: [ 
     messages.TOTAL_CAPACITY_LIMIT
   ],
@@ -135,23 +134,15 @@ function invokeAction(req, res) {
 			processErr(req, res, err);
 		});
     }
-
   
     createActivationAndRespond(req, res, start).then((activation) => {
-	  function invokeWithRetries(){
-		console.log("starting invoke with retries");
-      	retry(function() {return backend.invoke(req.params.actionName, req.body, this.api_key)}, retryOptions).then((result)=>{
-  		  console.log("=========>>>> retry resolved  " + result);
-  		  updateAndRespond(activation, result);
-  		}).catch((e)=>{
-  			console.log("=========>>>> retry catched  " + e);
-  			if(e == messages.TOTAL_CAPACITY_LIMIT){
-  				processErr(req, res, err);
-  			}else{
-  				updateAndRespond(activation, {}, e);
-  			}
-  		});
-	  }
+			function invokeWithRetries(){
+				console.log("starting invoke with retries");
+					retry(function() {return backend.invoke(req.params.actionName, req.body, this.api_key)}, retryOptions).then((result)=>{
+					console.log("=========>>>> retry resolved  " + result);
+					updateAndRespond(activation, result);
+				});
+	  	}
 	  
 	  backend.invoke(req.params.actionName, req.body, this.api_key)
 	    .then((result) => {
@@ -174,35 +165,30 @@ function invokeAction(req, res) {
                   console.log("Error registering action: " + e);
                   updateAndRespond(activation, {}, e);
                 })
-
-              if(burstOWService){
-                backend.request("PUT", burstOWService + req.path, req.body).then(function(result){
-                  console.log("--- RESULT: " + JSON.stringify(result));
-                  updateAndRespond(activation, result);
-                }).catch(function(e) {
-                  console.log("--- ERROR registering action in bursting!: " + JSON.stringify(e));
-                  updateAndRespond(activation, {}, e);
-                });
-              }
-	        })
-	        .catch(function (err) {
+	        }).catch(function (err) {
 	        	updateAndRespond(activation, {}, err);
 	        });
 	      }else if(e == messages.TOTAL_CAPACITY_LIMIT){
 	        console.log("Maximal local capacity reached.");
 
-	        if(burstOWService){
-	          console.log("Delegating action invoke to bursting ow service");
-	          backend.request("POST", burstOWService + req.path, req.body).then(function(result){
-	            console.log("--- RESULT: " + JSON.stringify(result));
-	            updateAndRespond(activation, result);
-	          }).catch(function(e) {
-	            console.log("--- ERROR: " + JSON.stringify(e));
-	            updateAndRespond(activation, {}, e);
-	          });
-	        }else{
-	          invokeWithRetries();
-	        }
+					invokeWithRetries().catch((e)=>{
+						console.log("=========>>>> retry catched  " + e);
+						if(e != messages.TOTAL_CAPACITY_LIMIT){
+							processErr(req, res, e);
+						}else{
+							if(config.delegate_on_failure){
+								console.log("Delegating action invoke to bursting ow service");
+								backend.request("POST", OPENWHISK_API + req.path, req.body).then(function(result){
+									console.log("--- RESULT: " + JSON.stringify(result));
+									updateAndRespond(activation, result);
+								}).catch(function(e) {
+									console.log("--- ERROR: " + JSON.stringify(e));
+									updateAndRespond(activation, {}, e);
+								});
+							}							
+							updateAndRespond(activation, {}, e);
+						}
+					})
 	      }else{
 	    	  console.log("Unknown error occured");
 	    	  updateAndRespond(activation, {}, e);
@@ -234,18 +220,7 @@ function getAction(req, res) {
         backend.create(req.params.actionName, action)
         .then((result) => {
            console.log("action " + req.params.actionName + " registered");
-
-           if(burstOWService){
-             backend.request("PUT", burstOWService + req.path, req.body).then(function(result){
-               console.log("--- RESULT: " + JSON.stringify(result));
-               res.send(action);
-             }).catch(function(e) {
-               console.log("--- ERROR registering action in bursting service: " + e);
-               processErr(req, res, e);
-             });
-           }else{
          	 res.send(action);
-           }
         })
         .catch(function(e) {
           console.log(e);
@@ -269,21 +244,12 @@ function deleteAction(req, res) {
     var start = new Date().getTime();
     
     backend.request("DELETE", openwhiskApi + req.path, req.body, {"authorization": req.get("authorization")}).then(function(result){
-      backend.deleteAction(req.params.actionName);
-      	if(burstOWService){
-          backend.request("DELETE", burstOWService + req.path, req.body).then(function(deleted){
-            res.send(result);
-          }).catch(function(e) {
-            console.log("--- ERROR deleting action in bursting service: " + e);
-            processErr(req, res, e);
-          });
-        }else{
-        	res.send(result);
-        }
-      }).catch(function(e) {
+      	backend.deleteAction(req.params.actionName);
+        res.send(result);
+    }).catch(function(e) {
         console.log("--- ERROR: " + JSON.stringify(e));
         processErr(req, res, e);
-      });
+    });
 }
 
 function _getAction(namespace, actionName, req){

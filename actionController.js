@@ -204,8 +204,7 @@ function getAction(req, res) {
 	var start = new Date().getTime();
 
 	console.log("getting action " + req.params.actionName + " from owproxy");
-	owproxy.getAction(req)
-	.then((action)=>{
+	owproxy.getAction(req).then((action)=>{
 	    console.log("got action: " + JSON.stringify(action));
 	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 

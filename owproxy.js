@@ -45,7 +45,7 @@ module.exports = {
   getAction: function getAction(req) {
     var api_key = from_auth_header(req);
     var ow_client = openwhisk({ api: openwhiskApi, api_key });
-    ow_client.actions.get({actionName: req.params.actionName, namespace: req.params.namespace})
+    return ow_client.actions.get({actionName: req.params.actionName, namespace: req.params.namespace});
   },
 
   deleteAction: function deleteAction(req){

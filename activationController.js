@@ -1,11 +1,8 @@
-var express = require('express');
-var router = express.Router();
 var openwhisk = require('openwhisk');
-var bodyParser = require('body-parser');
 
-const messages = require('./../messages');
+const messages = require('./messages');
 
-const config = require("./../config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
+const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 
 
 var PouchDB = require('pouchdb');
@@ -20,10 +17,7 @@ db.createIndex({
 }).then((res)=>{console.log("indexing res: " + JSON.stringify(res));}).catch((err)=>{console.log("indexing error: " + err)});
 
 
-router.use(bodyParser.json());
-
-// TODO
-router.get('/namespaces/:namespace/activations', function(req, res) {
+function getActivations(req, res) {
 //	console.log("REQ: " + stringify(req));
 	console.log("------in activations list with " + req.originalUrl);
 	
@@ -38,9 +32,9 @@ router.get('/namespaces/:namespace/activations', function(req, res) {
         console.log("res after pluck: " + JSON.stringify(result));
         res.send(result);
 	}).catch((err)=>{console.log("find error: " + err)});	
-});
+}
 
-router.get('/namespaces/:namespace/activations/:activationid', function(req, res) {
+function getActivation(req, res) {
 	console.log("in activations get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
@@ -50,9 +44,9 @@ router.get('/namespaces/:namespace/activations/:activationid', function(req, res
         console.log(err);
         res.status(502).send(buildResponse(req, err));
     });	
-});
+}
 
-router.get('/namespaces/:namespace/activations/:activationid/logs', function(req, res) {
+function getActivationLogs(req, res) {
 	console.log("in activations logs get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
@@ -62,9 +56,9 @@ router.get('/namespaces/:namespace/activations/:activationid/logs', function(req
         console.log(err);
         res.status(502).send(buildResponse(req, err));
     });	
-});
+}
 
-router.get('/namespaces/:namespace/activations/:activationid/result', function(req, res) {
+function getActivationResult(req, res) {
 	console.log("in activations result get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
@@ -74,7 +68,7 @@ router.get('/namespaces/:namespace/activations/:activationid/result', function(r
         console.log(err);
         res.status(502).send(buildResponse(req, err));
     });	
-});
+}
 
 function buildResponse(req, error){
     console.log("error.error.error: " + error.error.error);
@@ -96,5 +90,9 @@ function buildResponse(req, error){
   }
 }
 
+module.exports = {
+  getActivations:getActivations, 
+  getActivation:getActivation,
+  getActivationLogs:getActivationLogs,
+  getActivationResult:getActivationResult};
 
-module.exports = router;

@@ -1,12 +1,9 @@
-var express = require('express');
-var router = express.Router({strict: true});
 var openwhisk = require('openwhisk');
-var bodyParser = require('body-parser');
 
-const DockerBackend = require('./../dockerbackend.js');
-const messages = require('./../messages');
+const DockerBackend = require('./dockerbackend.js');
+const messages = require('./messages');
 
-const config = require("./../config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
+const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 const burstOWService = process.env.BURST_OW_SERVICE || config.burstOWService; // max number of containers per host
 
 var dockerhost = process.env.DOCKER_HOST || function() {
@@ -33,8 +30,6 @@ var db = new PouchDB('owl.db');
 
 
 var uuid = require("uuid");
-
-router.use(bodyParser.json({limit:'10mb'}));
 
 const retry = require('retry-as-promised')
 
@@ -76,16 +71,7 @@ var retryOptions = {
  * 		respond with result
  * 
  */
-router.post('/namespaces/:namespace/actions/:actionName', invokeHandler);
-router.post('/namespaces/:namespace/actions/:packageName/:actionName', invokeHandlerWithPackage);
-
-function invokeHandlerWithPackage(req, res) {
-  // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
-  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
-  invokeHandler(req, res);
-}
-
-function invokeHandler(req, res) {
+function invokeAction(req, res) {
   console.log("PATH: " + req.path);
   console.log("params: " + JSON.stringify(req.params));
   console.log("namespace: " + req.params.namespace);
@@ -174,7 +160,7 @@ function invokeHandler(req, res) {
 	    .catch(function(e) {
 	      if(e == messages.ACTION_MISSING_ERROR){
 	        console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
-	        getAction(req.params.namespace, req.params.actionName, req)
+	        _getAction(req.params.namespace, req.params.actionName, req)
 	        .then((action)=>{
                 console.log("got action: " + JSON.stringify(action));
                 console.log("Registering action under openwhisk edge " + JSON.stringify(action));
@@ -235,21 +221,12 @@ function invokeHandler(req, res) {
  * Update local actions registry
  * Update bursting service actions registry
  */
-router.get('/namespaces/:namespace/actions/:actionName', getHandler);
-router.get('/namespaces/:namespace/actions/:packageName/:actionName', getHandlerWithPackage);
-
-function getHandlerWithPackage(req, res) {
-  // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
-  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
-  getHandler(req, res);
-}
-
-function getHandler(req, res) {
+function getAction(req, res) {
 	console.log("BODY: " + JSON.stringify(req.body));
 	var start = new Date().getTime();
 
 	console.log("getting action " + req.params.actionName + " from " + openwhiskApi);
-	getAction(req.params.namespace, req.params.actionName, req)
+	_getAction(req.params.namespace, req.params.actionName, req)
 	.then((action)=>{
 	    console.log("got action: " + JSON.stringify(action));
 	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
@@ -287,16 +264,7 @@ function getHandler(req, res) {
  * delete action from local registry
  * delete action from bursting service
  */
-router.delete('/namespaces/:namespace/actions/:actionName', deleteHandler);
-router.delete('/namespaces/:namespace/actions/:packageName/:actionName', deleteHandlerWithPackage);
-
-function deleteHandlerWithPackage(req, res) {
-  // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
-  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
-  deleteHandler(req, res);
-}
-
-function deleteHandler(req, res) {
+function deleteAction(req, res) {
     var api_key = from_auth_header(req);
     var start = new Date().getTime();
     
@@ -318,7 +286,7 @@ function deleteHandler(req, res) {
       });
 }
 
-function getAction(namespace, actionName, req){
+function _getAction(namespace, actionName, req){
     var api_key = from_auth_header(req);
     var ow_client = openwhisk({api: openwhiskApi, api_key});
 
@@ -428,5 +396,5 @@ function processErr(req, res, err){
    		});
 //   	}
 }
+module.exports = {invokeAction:invokeAction, deleteAction:deleteAction, getAction:getAction};
 
-module.exports = router;

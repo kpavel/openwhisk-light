@@ -9,7 +9,7 @@ var routes = require('./routes');
 app.enable('strict routing');
 
 const config = require('./config');
-const url_path_prefix = config.url_path_prefix || '/api/vi';
+const url_path_prefix = config.url_path_prefix || '/api/v1';
 app.use(url_path_prefix, routes);
 
 app.listen(port);

@@ -4,7 +4,7 @@ const messages = require('./messages');
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 
 var dockerhost = process.env.DOCKER_HOST || function() {
-    throw "please set the DOCKER_HOST environmental variable, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375";
+  throw "please set the DOCKER_HOST environmental variable, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375";
 }();
 
 console.log("DOCKERHOST: " + dockerhost);
@@ -16,11 +16,7 @@ var stringify = require('json-stringify-safe');
 
 var url = require('url');
 
-var PouchDB = require('pouchdb');
-PouchDB.plugin(require('pouchdb-find'));
-
-var db = new PouchDB('owl.db');
-
+var activations = require('./activations');
 
 var uuid = require("uuid");
 
@@ -69,44 +65,45 @@ var actions = {};
  * 		respond with result
  * 
  */
-function invokeAction(req, res) {
-	console.log("PATH: " + req.path);
-	console.log("params: " + JSON.stringify(req.params));
-	console.log("namespace: " + req.params.namespace);
-	console.log("actionName: " + req.params.actionName);
+function handleInvokeAction(req, res) {
+  console.log("PATH: " + req.path);
+  console.log("params: " + JSON.stringify(req.params));
+  console.log("namespace: " + req.params.namespace);
+  console.log("actionName: " + req.params.actionName);
 
-	console.log("BODY: " + JSON.stringify(req.body));
-	console.log("headers: " + JSON.stringify(req.headers));
+  console.log("BODY: " + JSON.stringify(req.body));
+  console.log("headers: " + JSON.stringify(req.headers));
 
-	var start = new Date().getTime();
-	this["api_key"] = from_auth_header(req);
-	console.log("API KEY: " + this.api_key);
+  var start = new Date().getTime();
+  this["api_key"] = from_auth_header(req);
+  console.log("API KEY: " + this.api_key);
 
-	function updateAndRespond(activation, result, err) {
-		console.log("raw result: " + JSON.stringify(result));
-		console.log("activation: " + JSON.stringify(activation));
-		var response;
-		var rc = 200;
+  function updateAndRespond(activation, result, err) {
+    console.log("raw result: " + JSON.stringify(result));
+    console.log("activation: " + JSON.stringify(activation));
+    var response;
+    var rc = 200;
 
-		if (err !== undefined) {
-			console.log("err.error.error:" + JSON.stringify(err));
-			response = {
-				"result": {
-					error: err.error.error
-				},
-				"status": "action developer error",
-				"success": false
-			};
-			rc = 502;
-		} else {
-			response = {
-				result,
-				"status": "success",
-				"success": true
-			};
-		}
+    if (err !== undefined) {
+      console.log("err.error.error:" + JSON.stringify(err));
+      response = {
+        "result": {
+          error: err.error.error
+        },
+        "status": "action developer error",
+        "success": false
+      };
+      rc = 502;
+    } else {
+      response = {
+        result,
+        "status": "success",
+        "success": true
+      };
+    }
 
-		db.get(activation.activationId).then(function (activationDoc) {
+	  activations.getActivation(activation.activationId).then(function(activationDoc) {
+              console.log('updating activation: ' + JSON.stringify(activationDoc));
 			var end = new Date().getTime();
 			activationDoc.activation.end = end;
 			activationDoc.activation.duration = (end - activationDoc.activation.start);
@@ -114,9 +111,9 @@ function invokeAction(req, res) {
 			activationDoc.activation.response = response;
 
 
-			//store activation in local db
-			db.put(activationDoc).then(function (doc) {
-				console.log("returned responss: " + JSON.stringify(doc));
+	      //store activation 
+	      activations.updateActivation(activationDoc).then(function (doc) {
+	   	   console.log("returned response: " + JSON.stringify(doc));
 				if (req.query.blocking === "true") {
 					console.log("responding: " + JSON.stringify(response));
 
@@ -138,7 +135,7 @@ function invokeAction(req, res) {
 		function invokeWithRetries() {
 			console.log("starting invoke with retries");
 			retry(function () { return backend.invoke(req.params.actionName, action, req.body, this.api_key) }, retryOptions).then((result) => {
-				console.log("=========>>>> retry resolved  " + result);
+				console.log("=========>>>> retry resolved  " + JSON.stringify(result));
 				updateAndRespond(activation, result);
 			});
 		}
@@ -154,7 +151,7 @@ function invokeAction(req, res) {
 					console.log("getting action " + req.params.actionName + " from owproxy");
 					owproxy.getAction(req)
 						.then((action) => {
-							console.log("Registering action under openwhisk edge " + JSON.stringify(action));
+							console.log("Registering action " + JSON.stringify(action));
 							backend.create(req.params.actionName, action.exec.kind, action.exec.image)
 								.then((result) => {
 									console.log("action " + req.params.actionName + " registered");
@@ -218,7 +215,7 @@ function invokeAction(req, res) {
  * Update local actions registry
  * Update bursting service actions registry
  */
-function getAction(req, res) {
+function handleGetAction(req, res) {
 	console.log("BODY: " + JSON.stringify(req.body));
 	var start = new Date().getTime();
 
@@ -249,7 +246,7 @@ function getAction(req, res) {
  * delete action from local registry
  * delete action from bursting service
  */
-function deleteAction(req, res) {
+function handleDeleteAction(req, res) {
 	var api_key = from_auth_header(req);
 	var start = new Date().getTime();
 
@@ -278,8 +275,8 @@ function createActivationAndRespond(req, res, start){
 	    namespace: req.params.namespace,
 	    "publish": false,
 	    start,
-	    "subject": "kpavel@il.ibm.com",
-	    "version": "0.0.4"
+	    "subject": "owl@il.ibm.com",
+	    "version": "0.0.0"
     }
 	
 	console.log(1);
@@ -289,9 +286,9 @@ function createActivationAndRespond(req, res, start){
 		console.log(activationId);
 		console.log(stringify(activation));
 		
-		db.put({_id: activationId, activation}).then(function (response) {
+		activations.createActivation(activation).then(function (response) {
 			console.log(3);
-			console.log("got db.post response: " + JSON.stringify(response));
+			console.log("got response: " + JSON.stringify(response));
 		
 			// if not blocking respond with activation id and continue with the flow
 		   if(req.query.blocking !== "true"){
@@ -341,8 +338,8 @@ function buildResponse(req, start, result, error){
     "publish": false,
     response,
     start,
-    "subject": "kpavel@il.ibm.com",
-    "version": "0.0.4"
+    "subject": "owl@il.ibm.com",
+    "version": "0.0.0"
   }
 }
 
@@ -356,5 +353,9 @@ function processErr(req, res, err){
    		});
 //   	}
 }
-module.exports = {invokeAction:invokeAction, deleteAction:deleteAction, getAction:getAction};
+module.exports = {
+  handleInvokeAction:handleInvokeAction, 
+  handleDeleteAction:handleDeleteAction, 
+  handleGetAction:handleGetAction
+};
 

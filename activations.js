@@ -17,7 +17,7 @@ db.createIndex({
 }).then((res)=>{console.log("indexing res: " + JSON.stringify(res));}).catch((err)=>{console.log("indexing error: " + err)});
 
 
-function getActivations(req, res) {
+function handleGetActivations(req, res) {
 //	console.log("REQ: " + stringify(req));
 	console.log("------in activations list with " + req.originalUrl);
 	
@@ -34,7 +34,7 @@ function getActivations(req, res) {
 	}).catch((err)=>{console.log("find error: " + err)});	
 }
 
-function getActivation(req, res) {
+function handleGetActivation(req, res) {
 	console.log("in activations get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
@@ -46,7 +46,7 @@ function getActivation(req, res) {
     });	
 }
 
-function getActivationLogs(req, res) {
+function handleGetActivationLogs(req, res) {
 	console.log("in activations logs get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
@@ -58,7 +58,7 @@ function getActivationLogs(req, res) {
     });	
 }
 
-function getActivationResult(req, res) {
+function handleGetActivationResult(req, res) {
 	console.log("in activations result get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
@@ -85,14 +85,30 @@ function buildResponse(req, error){
     namespace: req.params.namespace,
     "publish": false,
     response,
-    "subject": "kpavel@il.ibm.com",
-    "version": "0.0.4"
+    "subject": "owl@il.ibm.com",
+    "version": "0.0.0"
   }
 }
 
+function createActivation(activationDoc) {
+  return db.put({_id:activationDoc.activationId, activation:activationDoc});
+}
+
+function updateActivation(activationDoc) {
+  return db.put(activationDoc);
+}
+
+function getActivation(activationId) {
+  return db.get(activationId);
+}
+
 module.exports = {
-  getActivations:getActivations, 
-  getActivation:getActivation,
-  getActivationLogs:getActivationLogs,
-  getActivationResult:getActivationResult};
+  handleGetActivations:handleGetActivations, 
+  handleGetActivation:handleGetActivation,
+  handleGetActivationLogs:handleGetActivationLogs,
+  handleGetActivationResult:handleGetActivationResult,
+  createActivation:createActivation,
+  updateActivation:updateActivation,
+  getActivation:getActivation
+};
 

@@ -410,7 +410,7 @@ class DockerBackend {
         ////////
         // All running containers busy, will have to start a stopped one or create a new one, checking that total capacity not reached
         var activeContainersNum = 0;
-        for(var key in Object.keys(that.containers)){
+        for(var key in that.containers){
           activeContainersNum += _.filter(that.containers[key], (o) => {
             return (o.state == "running" || o.state == "reserved" || o.busy);
           }).length;

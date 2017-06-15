@@ -13,8 +13,8 @@ module.exports = {
     },
   },
   retries: {
-	  timeout: 5000, //msec
-	  number: 10
+	  timeout: 2000, //msec
+	  number: 5
   },
   delegate_on_failure: false
 };

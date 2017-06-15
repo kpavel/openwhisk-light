@@ -24,11 +24,11 @@ const retry = require('retry-as-promised')
 
 var retryOptions = {
   max: config.retries.number, 
-  timeout: config.retries.timeout, 
+  timeout: 60000, // TODO: use action time limit?
   match: [ 
     messages.TOTAL_CAPACITY_LIMIT
   ],
-  backoffBase: 15000,
+  backoffBase: config.retries.timeout,
   backoffExponent: 1, 
   report: function(msg){ console.log(msg, ""); }, 
   name:  'Action invoke' 
@@ -132,12 +132,14 @@ function handleInvokeAction(req, res) {
 	}
 
 	createActivationAndRespond(req, res, start).then((activation) => {
-		function invokeWithRetries() {
+		function invokeWithRetries(action) {
 			console.log("starting invoke with retries");
 			retry(function () { return backend.invoke(req.params.actionName, action, req.body, this.api_key) }, retryOptions).then((result) => {
 				console.log("=========>>>> retry resolved  " + JSON.stringify(result));
 				updateAndRespond(activation, result);
-			});
+			}).catch(function (err) { 
+                            updateAndRespond(activation, {}, {error:{error:err}});
+                          });
 		}
 
 		function _getAction(req) {
@@ -162,7 +164,7 @@ function handleInvokeAction(req, res) {
 									console.log("Error registering action: " + e);
 									reject(e);
 								})
-						}).catch(function (err) {
+						}).catch(function (e) {
 							reject(e);
 						});
 				}
@@ -178,7 +180,7 @@ function handleInvokeAction(req, res) {
 					if (e == messages.TOTAL_CAPACITY_LIMIT) {
 						console.log("Maximal local capacity reached.");
 
-						invokeWithRetries().catch((e) => {
+						invokeWithRetries(action).catch((e) => {
 							console.log("=========>>>> retry catched  " + e);
 							if (e != messages.TOTAL_CAPACITY_LIMIT) {
 								processErr(req, res, e);

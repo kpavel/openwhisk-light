@@ -2,8 +2,8 @@ var express = require('express');
 var router = express.Router({strict: true});
 var bodyParser = require('body-parser');
 
-const actionController = require('./actionController.js');
-const activationController = require('./activationController.js');
+const actions = require('./actions.js');
+const activations = require('./activations.js');
 const owproxy = require('./owproxy.js');
 
 router.use(bodyParser.json({limit:'10mb'}));
@@ -19,7 +19,7 @@ function invokeHandlerWithPackage(req, res) {
 }
 
 function invokeHandler(req, res) {
-  actionController.invokeAction(req, res);
+  actions.handleInvokeAction(req, res);
 }
 
 router.get('/namespaces/:namespace/actions/:actionName', getHandler);
@@ -32,7 +32,7 @@ function getHandlerWithPackage(req, res) {
 }
 
 function getHandler(req, res) {
-  actionController.getAction(req, res);
+  actions.handleGetAction(req, res);
 }
 
 router.delete('/namespaces/:namespace/actions/:actionName', deleteHandler);
@@ -45,24 +45,24 @@ function deleteHandlerWithPackage(req, res) {
 }
 
 function deleteHandler(req, res) {
-  actionController.deleteAction(req, res);
+  actions.handleDeleteAction(req, res);
 }
 
 // ===== ACTIVATIONS =====
 router.get('/namespaces/:namespace/activations', function(req, res) {
-  activationController.getActivations(req, res);
+  activations.handleGetActivations(req, res);
 });
 
 router.get('/namespaces/:namespace/activations/:activationid', function(req, res) {
-  activationController.getActivation(req, res);
+  activations.handleGetActivation(req, res);
 });
 
 router.get('/namespaces/:namespace/activations/:activationid/logs', function(req, res) {
-  activationController.getActivationLogs(req, res);
+  activations.handleGetActivationLogs(req, res);
 });
 
 router.get('/namespaces/:namespace/activations/:activationid/result', function(req, res) {
-  activationController.getActivationResult(req, res);
+  activations.handleGetActivationResult(req, res);
 });
 
 // ===== PROXY =====

@@ -137,7 +137,7 @@ function invokeAction(req, res) {
 	createActivationAndRespond(req, res, start).then((activation) => {
 		function invokeWithRetries() {
 			console.log("starting invoke with retries");
-			retry(function () { return backend.invoke(req.params.actionName, req.body, this.api_key) }, retryOptions).then((result) => {
+			retry(function () { return backend.invoke(req.params.actionName, action, req.body, this.api_key) }, retryOptions).then((result) => {
 				console.log("=========>>>> retry resolved  " + result);
 				updateAndRespond(activation, result);
 			});
@@ -254,7 +254,7 @@ function deleteAction(req, res) {
 	var start = new Date().getTime();
 
 	owproxy.deleteAction(req).then(function (result) {
-		delete actions[actionName];
+		delete actions[req.params.actionName];
 		res.send(result);
 	}).catch(function (e) {
 		console.log("--- ERROR: " + JSON.stringify(e));

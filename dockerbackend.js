@@ -453,7 +453,7 @@ class DockerBackend {
   // TODO: add validations that action image exists
   // TODO: deprecate containers
   create(actionName, kind, image){
-    console.log("in " + actionName + " action create with: " + JSON.stringify(action));
+    console.log("in " + actionName + " action create");
     var that = this;
     return new Promise((resolve, reject) => {
       if(!that.containers[actionName]){

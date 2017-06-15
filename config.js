@@ -16,5 +16,6 @@ module.exports = {
 	  timeout: 5000, //msec
 	  number: 10
   },
-  delegate_on_failure: false
+  delegate_on_failure: false,
+  url_path_prefix: '/api/v1'
 };

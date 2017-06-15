@@ -42,7 +42,7 @@ $ wsk property get
 ```
 Run the OWL container:
 ``` sh
-$ docker run -d --net=owl-net -p 3000:3000 -e DOCKER_HOST=tcp://172.21.0.1:2375 -e OPENWHISK_API=https://openwhisk.ng.bluemix.net/api/v1 -e OPENWHISK_HOST=https://openwhisk.ng.bluemix.net --name owl owl-img
+$ docker run -d --net=owl-net -p 3000:3000 -e DOCKER_HOST=tcp://172.21.0.1:2375 --name owl owl-img
 ```
 If this is a consequent creation of OWL container and Docker complains that it already exists, run `docker rm -f owl` first. Verify that OWL started successfully by verifying that there are no errors in logs:
 ``` sh

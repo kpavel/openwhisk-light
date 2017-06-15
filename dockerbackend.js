@@ -64,9 +64,6 @@ class DockerBackend {
     //e.g. { $ACTION_NAME: [{ state: "created", container: container_object, used: timestamp_seconds... , ] };
     this.containers = {};
 
-    //e.g. { $ACTION_NAME: "exec": { "kind": "nodejs", "code": "function main(params) {}" .... },}
-    this.actions = {};
-
     var ReadWriteLock = require('rwlock');
     this.containersLock = new ReadWriteLock();
 
@@ -234,13 +231,11 @@ class DockerBackend {
 
   // preemption moved to a separate class
 
-  start(actionName, actionContainer){
+  start(actionName, action, actionContainer){
     var that = this;
     console.log("Action " + actionName + ", starting container");
 
     var container = actionContainer.container;
-    var action = that.actions[actionName];
-
     return new Promise((resolve, reject) => {
       container.start(function (err, data) {
 
@@ -336,13 +331,13 @@ class DockerBackend {
   // invoke action on CONTAINER
   // return CONTAINER back to containers pool
   // return invoke result
-  invoke(actionName, params, api_key){
+  invoke(actionName, action, params, api_key){
     var that = this;
 
     return new Promise(function(resolve,reject) {
-      that.getActionContainer(actionName).then((actionContainer)=>{
+      that.getActionContainer(actionName, action).then((actionContainer)=>{
         // append params from action metadata
-        that.actions[actionName].parameters.forEach(function(param) { params[param.key]=param.value; });
+        action.parameters.forEach(function(param) { params[param.key]=param.value; });
         if(actionContainer.state == "running"){
           // TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
           actionproxy.run(actionName, actionContainer.address, api_key, params).then(function(result){
@@ -358,7 +353,7 @@ class DockerBackend {
           });
         }else{
           console.log("Container " + JSON.stringify(actionContainer) + " registered as not running, starting container");
-          that.start(actionName, actionContainer).then(function(address){
+          that.start(actionName, action, actionContainer).then(function(address){
             console.log("--- container started with address: " + JSON.stringify(address));
             // TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
             actionproxy.run(actionName, address, api_key, params).then(function(result){
@@ -389,15 +384,10 @@ class DockerBackend {
     });
   };
 
-  getActionContainer(actionName){
+  getActionContainer(actionName, action){
     var that = this;
 
     return new Promise((resolve, reject) => {
-    	
-	  if(!that.actions[actionName]){
-        //no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
-        return reject(messages.ACTION_MISSING_ERROR);
-      }
     	
       var actionContainers = that.containers[actionName] || [];
 
@@ -420,8 +410,8 @@ class DockerBackend {
         ////////
         // All running containers busy, will have to start a stopped one or create a new one, checking that total capacity not reached
         var activeContainersNum = 0;
-        for(var name in that.actions){
-          activeContainersNum += _.filter(that.containers[name], (o) => {
+        for(var key in Object.keys(that.containers)){
+          activeContainersNum += _.filter(that.containers[key], (o) => {
             return (o.state == "running" || o.state == "reserved" || o.busy);
           }).length;
         }
@@ -450,7 +440,7 @@ class DockerBackend {
           that.containers[actionName].push(actionContainer);
           release();
 
-          that.createContainer(actionName).then((container)=>{
+          that.createContainer(actionName, action).then((container)=>{
             actionContainer.container = container;
             resolve(actionContainer);
           });
@@ -461,18 +451,18 @@ class DockerBackend {
 
   // stores action in local action pool. pulls docker image from docker hub in case of blackbox action kind
   // TODO: add validations that action image exists
-  create(actionName, action){
+  // TODO: deprecate containers
+  create(actionName, kind, image){
     console.log("in " + actionName + " action create with: " + JSON.stringify(action));
     var that = this;
     return new Promise((resolve, reject) => {
-      var kind = action.exec.kind;
       if(!that.containers[actionName]){
         that.containers[actionName] = [];
       }
 
       if(kind == "blackbox"){
-        console.log("pulling image " + action.exec.image);
-        that.docker.pull(action.exec.image, function(err, stream){
+        console.log("pulling image " + image);
+        that.docker.pull(image, function(err, stream){
           if(err){
             console.log("Error pulling docker image: " + JSON.stringify(err));
             return reject(err);
@@ -484,28 +474,19 @@ class DockerBackend {
               return reject(err);
             }else{
               console.log("pull finished: " + JSON.stringify(output));
-              that.actions[actionName] = action;
               return resolve();
             }
           });
         });
       }else{
         console.log("action registered: " + actionName);
-        that.actions[actionName] = action;
         return resolve();
       }
     });
   };
 
-  // delete local action from pool.
-  deleteAction(actionName){
-    console.log("in deletee " + actionName);
-        delete this.actions[actionName];
-  };
-
-  createContainer(actionName){
+  createContainer(actionName, action){
     var that = this;
-    var action = this.actions[actionName];
     var image = action.exec.image || action.exec.kind.replace(":", "") + "action";
     return new Promise((resolve, reject) => {
       that.docker.createContainer({

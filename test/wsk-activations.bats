@@ -20,3 +20,9 @@ setup() {
   [ "$res" = "\"BB\"" ]
 }
 
+@test "wsk action invoke missing-action non-blocking and check activation not created" {
+  actid=`wsk -i action invoke missing-action -p aa BB | cut -d' ' -f 6`
+  echo actid:$actid
+  [ "$actid" = "" ]
+}
+

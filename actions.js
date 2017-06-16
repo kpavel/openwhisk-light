@@ -131,7 +131,7 @@ function handleInvokeAction(req, res) {
 		});
 	}
 
-	createActivationAndRespond(req, res, start).then((activation) => {
+
 		function invokeWithRetries(action) {
 			console.log("starting invoke with retries");
 			retry(function () { return backend.invoke(req.params.actionName, action, req.body, this.api_key) }, retryOptions).then((result) => {
@@ -142,36 +142,8 @@ function handleInvokeAction(req, res) {
                           });
 		}
 
-		function _getAction(req) {
-			var that = this;
-			return new Promise(function (resolve, reject) {
-				var action = actions[req.params.actionName];
-				if (action) {
-					resolve(action);
-				} else {
-					//no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
-					console.log("getting action " + req.params.actionName + " from owproxy");
-					owproxy.getAction(req)
-						.then((action) => {
-							console.log("Registering action " + JSON.stringify(action));
-							backend.create(req.params.actionName, action.exec.kind, action.exec.image)
-								.then((result) => {
-									console.log("action " + req.params.actionName + " registered");
-									actions[req.params.actionName] = action;
-									resolve(action);
-								})
-								.catch(function (e) {
-									console.log("Error registering action: " + e);
-									reject(e);
-								})
-						}).catch(function (e) {
-							reject(e);
-						});
-				}
-			});
-		}
-
 		_getAction(req).then((action) => {
+				createActivationAndRespond(req, res, start).then((activation) => {
 			backend.invoke(req.params.actionName, action, req.body, this.api_key)
 				.then((result) => {
 					updateAndRespond(activation, result);
@@ -204,9 +176,9 @@ function handleInvokeAction(req, res) {
 						updateAndRespond(activation, {}, e);
 					}
 				})
-		});
-	}).catch(function (err) {
+		}).catch(function (err) {
 		processErr(req, res, err);
+	});
 	});
 }
 
@@ -266,6 +238,35 @@ function from_auth_header(req) {
   auth = auth.replace(/basic /i, "");
   auth = new Buffer(auth, 'base64').toString('ascii');
   return auth;
+}
+
+function _getAction(req) {
+	var that = this;
+	return new Promise(function (resolve, reject) {
+		var action = actions[req.params.actionName];
+		if (action) {
+			resolve(action);
+		} else {
+			//no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
+			console.log("getting action " + req.params.actionName + " from owproxy");
+			owproxy.getAction(req)
+				.then((action) => {
+					console.log("Registering action " + JSON.stringify(action));
+					backend.create(req.params.actionName, action.exec.kind, action.exec.image)
+						.then((result) => {
+							console.log("action " + req.params.actionName + " registered");
+							actions[req.params.actionName] = action;
+							resolve(action);
+						})
+						.catch(function (e) {
+							console.log("Error registering action: " + e);
+							reject(e);
+						})
+				}).catch(function (e) {
+					reject(e);
+				});
+		}
+	});
 }
 
 function createActivationAndRespond(req, res, start){

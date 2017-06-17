@@ -9,11 +9,18 @@ function request (method, url, body, headers) {
 }
 
 function params (method, url, body) {
-  return Object.assign({
+  var res = {
       json: true,
       method: method,
       url
-    }, {body});
+    };
+  if(!body){
+      return res;
+  }else{
+      return Object.assign(
+      res
+    , {body});
+  }
 }
 
 module.exports = {request:request};

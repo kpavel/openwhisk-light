@@ -142,44 +142,46 @@ function handleInvokeAction(req, res) {
                           });
 		}
 
-		_getAction(req).then((action) => {
-				createActivationAndRespond(req, res, start).then((activation) => {
+        _getAction(req).then((action) => {
+          createActivationAndRespond(req, res, start).then((activation) => {
 			backend.invoke(req.params.actionName, action, req.body, this.api_key)
-				.then((result) => {
-					updateAndRespond(activation, result);
-				})
-				.catch(function (e) {
-					if (e == messages.TOTAL_CAPACITY_LIMIT) {
-						console.log("Maximal local capacity reached.");
+		      .then((result) => {
+			 	updateAndRespond(activation, result);
+		      })
+              .catch(function (e) {
+				if (e == messages.TOTAL_CAPACITY_LIMIT) {
+			      console.log("Maximal local capacity reached.");
 
-						invokeWithRetries(action).catch((e) => {
-							console.log("=========>>>> retry catched  " + e);
-							if (e != messages.TOTAL_CAPACITY_LIMIT) {
-								processErr(req, res, e);
-							} else {
-								if (config.delegate_on_failure) {
-									console.log("Delegating action invoke to bursting ow service");
-									owproxy.invoke(req).then(function (result) {
-										console.log("--- RESULT: " + JSON.stringify(result));
-										updateAndRespond(activation, result);
-									}).catch(function (e) {
-										console.log("--- ERROR: " + JSON.stringify(e));
-										updateAndRespond(activation, {}, e);
-									});
-								} else {
-									updateAndRespond(activation, {}, e);
-								}
-							}
-						})
+				  invokeWithRetries(action).catch((e) => {
+					console.log("=========>>>> retry catched  " + e);
+					if (e != messages.TOTAL_CAPACITY_LIMIT) {
+                      processErr(req, res, e);
 					} else {
-						console.log("Unknown error occured");
+                      if (config.delegate_on_failure) {
+					    console.log("Delegating action invoke to bursting ow service");
+						owproxy.invoke(req).then(function (result) {
+			              console.log("--- RESULT: " + JSON.stringify(result));
+						  updateAndRespond(activation, result);
+						}).catch(function (e) {
+						  console.log("--- ERROR: " + JSON.stringify(e));
+						  updateAndRespond(activation, {}, e);
+						});
+					  } else {
 						updateAndRespond(activation, {}, e);
+					  }
 					}
-				})
-		}).catch(function (err) {
-		processErr(req, res, err);
-	});
-	});
+				  })
+				} else {
+				  console.log("Unknown error occured");
+				  updateAndRespond(activation, {}, e);
+				}
+              })
+		    }).catch(function (err) {
+		      processErr(req, res, err);
+	        });
+        }).catch(function (err) {
+          processErr(req, res, err);
+        });
 }
 
 /*
@@ -195,6 +197,7 @@ function handleGetAction(req, res) {
 
 	console.log("getting action " + req.params.actionName + " from owproxy");
 	owproxy.getAction(req).then((action)=>{
+        console.log("BBBBBBBBBBBBB");
 	    console.log("got action: " + JSON.stringify(action));
 	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 
@@ -207,8 +210,8 @@ function handleGetAction(req, res) {
           console.log(e);
           processErr(req, res, e);
         })
-	})
-	.catch(function (err) {
+	}).catch((err)=>{
+        console.log("AAAAAAAAAAAA");
         console.log("action get error: " + err);
         processErr(req, res, err);
 	});
@@ -263,6 +266,7 @@ function _getAction(req) {
 							reject(e);
 						})
 				}).catch(function (e) {
+                    console.log("Error getting action: " + e);
 					reject(e);
 				});
 		}
@@ -349,9 +353,12 @@ function buildResponse(req, start, result, error){
 function processErr(req, res, err){
 	console.log(err);
 //   	if(req.query.blocking === "true"){
-   		console.log("err.error.error: " + err.error.error);
+   		console.log("err.error.error: " + err);
+        var msg = err.error ? err.error : err;
+        msg = err.error ? err.error : err;
+         
    		res.status(404).send({
-   			error: err.error.error,
+   			error: msg,
    			code: -1
    		});
 //   	}

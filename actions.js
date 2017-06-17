@@ -132,7 +132,7 @@ function handleInvokeAction(req, res) {
 	}
 
 
-		function invokeWithRetries(action) {
+		function invokeWithRetries(action, activation) {
 			console.log("starting invoke with retries");
 			retry(function () { return backend.invoke(req.params.actionName, action, req.body, this.api_key) }, retryOptions).then((result) => {
 				console.log("=========>>>> retry resolved  " + JSON.stringify(result));
@@ -152,7 +152,7 @@ function handleInvokeAction(req, res) {
 				if (e == messages.TOTAL_CAPACITY_LIMIT) {
 			      console.log("Maximal local capacity reached.");
 
-				  invokeWithRetries(action).catch((e) => {
+				  invokeWithRetries(action, activation).catch((e) => {
 					console.log("=========>>>> retry catched  " + e);
 					if (e != messages.TOTAL_CAPACITY_LIMIT) {
                       processErr(req, res, e);
@@ -197,7 +197,6 @@ function handleGetAction(req, res) {
 
 	console.log("getting action " + req.params.actionName + " from owproxy");
 	owproxy.getAction(req).then((action)=>{
-        console.log("BBBBBBBBBBBBB");
 	    console.log("got action: " + JSON.stringify(action));
 	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 
@@ -211,7 +210,6 @@ function handleGetAction(req, res) {
           processErr(req, res, e);
         })
 	}).catch((err)=>{
-        console.log("AAAAAAAAAAAA");
         console.log("action get error: " + err);
         processErr(req, res, err);
 	});

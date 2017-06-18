@@ -131,8 +131,8 @@ function handleInvokeAction(req, res) {
 		});
 	}
 
-	createActivationAndRespond(req, res, start).then((activation) => {
-		function invokeWithRetries(action) {
+
+		function invokeWithRetries(action, activation) {
 			console.log("starting invoke with retries");
 			retry(function () { return backend.invoke(req.params.actionName, action, req.body, this.api_key) }, retryOptions).then((result) => {
 				console.log("=========>>>> retry resolved  " + JSON.stringify(result));
@@ -142,72 +142,46 @@ function handleInvokeAction(req, res) {
                           });
 		}
 
-		function _getAction(req) {
-			var that = this;
-			return new Promise(function (resolve, reject) {
-				var action = actions[req.params.actionName];
-				if (action) {
-					resolve(action);
-				} else {
-					//no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
-					console.log("getting action " + req.params.actionName + " from owproxy");
-					owproxy.getAction(req)
-						.then((action) => {
-							console.log("Registering action " + JSON.stringify(action));
-							backend.create(req.params.actionName, action.exec.kind, action.exec.image)
-								.then((result) => {
-									console.log("action " + req.params.actionName + " registered");
-									actions[req.params.actionName] = action;
-									resolve(action);
-								})
-								.catch(function (e) {
-									console.log("Error registering action: " + e);
-									reject(e);
-								})
-						}).catch(function (e) {
-							reject(e);
-						});
-				}
-			});
-		}
-
-		_getAction(req).then((action) => {
+        _getAction(req).then((action) => {
+          createActivationAndRespond(req, res, start).then((activation) => {
 			backend.invoke(req.params.actionName, action, req.body, this.api_key)
-				.then((result) => {
-					updateAndRespond(activation, result);
-				})
-				.catch(function (e) {
-					if (e == messages.TOTAL_CAPACITY_LIMIT) {
-						console.log("Maximal local capacity reached.");
+		      .then((result) => {
+			 	updateAndRespond(activation, result);
+		      })
+              .catch(function (e) {
+				if (e == messages.TOTAL_CAPACITY_LIMIT) {
+			      console.log("Maximal local capacity reached.");
 
-						invokeWithRetries(action).catch((e) => {
-							console.log("=========>>>> retry catched  " + e);
-							if (e != messages.TOTAL_CAPACITY_LIMIT) {
-								processErr(req, res, e);
-							} else {
-								if (config.delegate_on_failure) {
-									console.log("Delegating action invoke to bursting ow service");
-									owproxy.invoke(req).then(function (result) {
-										console.log("--- RESULT: " + JSON.stringify(result));
-										updateAndRespond(activation, result);
-									}).catch(function (e) {
-										console.log("--- ERROR: " + JSON.stringify(e));
-										updateAndRespond(activation, {}, e);
-									});
-								} else {
-									updateAndRespond(activation, {}, e);
-								}
-							}
-						})
+				  invokeWithRetries(action, activation).catch((e) => {
+					console.log("=========>>>> retry catched  " + e);
+					if (e != messages.TOTAL_CAPACITY_LIMIT) {
+                      processErr(req, res, e);
 					} else {
-						console.log("Unknown error occured");
+                      if (config.delegate_on_failure) {
+					    console.log("Delegating action invoke to bursting ow service");
+						owproxy.invoke(req).then(function (result) {
+			              console.log("--- RESULT: " + JSON.stringify(result));
+						  updateAndRespond(activation, result);
+						}).catch(function (e) {
+						  console.log("--- ERROR: " + JSON.stringify(e));
+						  updateAndRespond(activation, {}, e);
+						});
+					  } else {
 						updateAndRespond(activation, {}, e);
+					  }
 					}
-				})
-		});
-	}).catch(function (err) {
-		processErr(req, res, err);
-	});
+				  })
+				} else {
+				  console.log("Unknown error occured");
+				  updateAndRespond(activation, {}, e);
+				}
+              })
+		    }).catch(function (err) {
+		      processErr(req, res, err);
+	        });
+        }).catch(function (err) {
+          processErr(req, res, err);
+        });
 }
 
 /*
@@ -235,8 +209,7 @@ function handleGetAction(req, res) {
           console.log(e);
           processErr(req, res, e);
         })
-	})
-	.catch(function (err) {
+	}).catch((err)=>{
         console.log("action get error: " + err);
         processErr(req, res, err);
 	});
@@ -266,6 +239,36 @@ function from_auth_header(req) {
   auth = auth.replace(/basic /i, "");
   auth = new Buffer(auth, 'base64').toString('ascii');
   return auth;
+}
+
+function _getAction(req) {
+	var that = this;
+	return new Promise(function (resolve, reject) {
+		var action = actions[req.params.actionName];
+		if (action) {
+			resolve(action);
+		} else {
+			//no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
+			console.log("getting action " + req.params.actionName + " from owproxy");
+			owproxy.getAction(req)
+				.then((action) => {
+					console.log("Registering action " + JSON.stringify(action));
+					backend.create(req.params.actionName, action.exec.kind, action.exec.image)
+						.then((result) => {
+							console.log("action " + req.params.actionName + " registered");
+							actions[req.params.actionName] = action;
+							resolve(action);
+						})
+						.catch(function (e) {
+							console.log("Error registering action: " + e);
+							reject(e);
+						})
+				}).catch(function (e) {
+                    console.log("Error getting action: " + e);
+					reject(e);
+				});
+		}
+	});
 }
 
 function createActivationAndRespond(req, res, start){
@@ -348,9 +351,12 @@ function buildResponse(req, start, result, error){
 function processErr(req, res, err){
 	console.log(err);
 //   	if(req.query.blocking === "true"){
-   		console.log("err.error.error: " + err.error.error);
+   		console.log("err.error.error: " + err);
+        var msg = err.error ? err.error : err;
+        msg = err.error ? err.error : err;
+         
    		res.status(404).send({
-   			error: err.error.error,
+   			error: msg,
    			code: -1
    		});
 //   	}

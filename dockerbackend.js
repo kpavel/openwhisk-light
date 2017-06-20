@@ -4,7 +4,6 @@ var validator = require('validator');
 const os = require("os");
 
 const messages = require('./messages');
-var actionproxy = require('./actionproxy');
 
 var _ = require("underscore");
 
@@ -27,6 +26,8 @@ var split   = require('split');
 var through = require('through');
 
 var cgroupParent = process.env.CGROUP_PARENT;
+
+var STATE    = require('./utils').STATE;
 
 function PrefixStream (prefix) {
   if ( ! (this instanceof PrefixStream)) {
@@ -228,12 +229,9 @@ class DockerBackend {
       });
     });
   };
-
-  // preemption moved to a separate class
-
-  start(actionName, action, actionContainer){
+  
+  startContainer(actionContainer){
     var that = this;
-    console.log("Action " + actionName + ", starting container");
 
     var container = actionContainer.container;
     return new Promise((resolve, reject) => {
@@ -258,131 +256,12 @@ class DockerBackend {
             stream.pipe(PrefixStream(containerInfo.Name.substr(1) + ": ")).pipe(process.stdout);
           });
 
-          var address = containerInfo.NetworkSettings.Networks[that.nwName].IPAddress;
-          var payload;
-          if(action.exec.kind == "java"){
-              payload = {value: { main: action.exec.main, jar: action.exec.code, code: action.exec.code}};
-          }else{
-              payload = {value: { main: "main", code: action.exec.code}};
-          }
-
-          if(action.exec.code && validator.isBase64(action.exec.code)){
-            payload.value['binary'] = true;
-          }
-
-          const RETRY_TIMEOUT = 100;
-          var retries = initTimeout / RETRY_TIMEOUT
-          var waitToInit = function(){
-            if(--retries == 0){
-              return reject(messages.INIT_TIMEOUT_ERROR);
-            }
-            // TODO: use 'init' method of 'action' class, hiding the exact arguments passed to proxy
-            actionproxy.init(address, payload).then((result) =>{
-              if(!result.OK && result != "OK"){
-                console.log(JSON.stringify(result) + " is not OK");
-
-                container.top({ps_args: 'aux'}, function(err, data) {
-                  if(err){
-                    console.log("container top returned error: " + JSON.stringify(err));
-                    return reject(err);
-                  }else{
-                    console.log("TOP OUTPUT: " + JSON.stringify(data));
-                  }
-                });
-
-                setTimeout(waitToInit, RETRY_TIMEOUT);
-              }else{
-                console.log("Container inited!");
-                Object.assign(actionContainer, {'state': "running", 'used': process.hrtime()[0], address});
-                return resolve(address);
-              }
-            }).catch(err => {
-              console.log("Error initing container, retrying: " + err);
-
-              //TODO: add timeout instead ot retries
-              setTimeout(waitToInit, RETRY_TIMEOUT);
-            });
-          };
-
-          waitToInit();
+          actionContainer.address = containerInfo.NetworkSettings.Networks[that.nwName].IPAddress;
+          resolve();
         });
       });
     });
   }
-
-  // using locks to prevent races
-
-  // from containers pool get first unused CONTAINER of specified ACTION_NAME
-  // mark CONTAINER entry as used
-
-  // if !CONTAINER
-  //     get ACTION by ACTION_NAME from actions object
-  //     if !ACTION
-  //        throw ACTION_MISSING_ERROR
-
-  //         get ACTION from OpenWhisk Global server using credentials
-  //         store ACTION under actions cache
-
-  //     create CONTAINER of ACTION KIND based on image name convention
-  //     add CONTAINER to containers pool (as used)
-  //     init CONTAINER based on ACTION details
-  //     start CONTAINER
-
-  // invoke action on CONTAINER
-  // return CONTAINER back to containers pool
-  // return invoke result
-  invoke(actionName, action, params, api_key){
-    var that = this;
-
-    return new Promise(function(resolve,reject) {
-      that.getActionContainer(actionName, action).then((actionContainer)=>{
-        // append params from action metadata
-        action.parameters.forEach(function(param) { params[param.key]=param.value; });
-        if(actionContainer.state == "running"){
-          // TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
-          actionproxy.run(actionName, actionContainer.address, api_key, params).then(function(result){
-            actionContainer['used'] = process.hrtime()[0];
-            delete actionContainer.busy;
-            return resolve(result);
-          }).catch(function(err){
-            console.log("invoke request failed with " + err);
-            actionContainer['state'] = 'running';
-            delete actionContainer.busy;
-
-            return reject(err);
-          });
-        }else{
-          console.log("Container " + JSON.stringify(actionContainer) + " registered as not running, starting container");
-          that.start(actionName, action, actionContainer).then(function(address){
-            console.log("--- container started with address: " + JSON.stringify(address));
-            // TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
-            actionproxy.run(actionName, address, api_key, params).then(function(result){
-              console.log("invoke request returned with " + result);
-              actionContainer['used'] = process.hrtime()[0];
-              delete actionContainer.busy;
-              return resolve(result);
-            }).catch(function(err){
-              console.log("invoke request failed with " + err);
-              actionContainer['state'] = 'running';
-              delete actionContainer.busy;
-
-              return reject(err);
-            });
-          }).catch(function(err){
-            console.log("action invoke failed with " + err);
-
-            //releasing container busy flag;
-            actionContainer['state'] = 'stopped';
-            delete actionContainer.busy;
-
-            return reject(err);
-          });
-        }
-      }).catch(function(err){
-        return reject(err);
-      });
-    });
-  };
 
   getActionContainer(actionName, action){
     var that = this;
@@ -397,11 +276,11 @@ class DockerBackend {
         ///////
         // First looking for available running container
         var activeContainers = actionContainers.filter((container) => {
-          return !container.busy && container.state == "running";
+          return container.state == STATE.running;
         });
 
         if(activeContainers.length){
-          activeContainers[0].busy = process.hrtime()[0]; //storing timestamp of when container became busy for preemption purposes
+          activeContainers[0].state = STATE.allocated; //storing timestamp of when container became busy for preemption purposes
           console.log('---RELEASE 0');
           release();
           return resolve(activeContainers[0]);
@@ -412,7 +291,7 @@ class DockerBackend {
         var activeContainersNum = 0;
         for(var key in that.containers){
           activeContainersNum += _.filter(that.containers[key], (o) => {
-            return (o.state == "running" || o.state == "reserved" || o.busy);
+            return (o.state != STATE.stopped);
           }).length;
         }
 
@@ -424,32 +303,40 @@ class DockerBackend {
 
         // Now looking for already created, but stopped container
         actionContainers = actionContainers.filter((container) => {
-          return !container.busy && container.state == "stopped";
+          return container.state == STATE.stopped;
         });
 
         if(actionContainers.length){
-          actionContainers[0].busy = process.hrtime()[0]; //storing timestamp of when container became busy for preemption purposes
+          actionContainers[0].state = STATE.reserved;
           release();
 
-          // Releasing and returning stopped container asap
-          resolve(actionContainers[0]);
+          that.startContainer(actionContainers[0]).then(function(){
+            actionContainers[0].state = STATE.allocated;
+            resolve(actionContainers[0]);
+          });
         }else{
           // no free container, creating a new one
           // Reserving the entry in cash to release lock asap
-          var actionContainer = {state: "reserved", busy: process.hrtime()[0], used: process.hrtime()[0], actionName};
+          var actionContainer = {state: STATE.reserved, used: process.hrtime()[0], actionName};
           that.containers[actionName].push(actionContainer);
           release();
 
           that.createContainer(actionName, action).then((container)=>{
             actionContainer.container = container;
-            resolve(actionContainer);
+            actionContainer.kind = action.exec.kind;
+            
+            that.startContainer(actionContainer).then(function(){
+              actionContainer.state = STATE.allocated;
+              console.log("address: " + actionContainer.address);
+              resolve(actionContainer);
+            });
           });
         }
       });
     });
   }
 
-  // stores action in local action pool. pulls docker image from docker hub in case of blackbox action kind
+  // pulls docker image from docker hub in case of blackbox action kind
   // TODO: add validations that action image exists
   // TODO: deprecate containers
   create(actionName, kind, image){

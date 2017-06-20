@@ -16,4 +16,23 @@ function params (method, url, body) {
     }, {body});
 }
 
-module.exports = {request:request};
+
+/**
+ * state machine:
+ * 
+ * running -> allocated -> running -> stopped -> started
+ * 
+ */
+
+
+const STATE = {
+	stopped : 0, 
+    reserved : 1,
+    started : 2, // started, but not yet inited 
+	running : 3, // started and inited
+	allocated : 4    // currently used by action
+};
+
+
+
+module.exports = {request, STATE};

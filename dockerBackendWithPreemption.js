@@ -73,6 +73,7 @@ class DockerBackendWithPreemption extends DockerBackend {
                 return new Promise((resolve) => {
                   containerInfo.container.stop(function(data){
                     containerInfo['state'] = STATE.stopped;
+                    delete containerInfo['inited'];
                     delete containerInfo['address'];
                     resolve();
                   });

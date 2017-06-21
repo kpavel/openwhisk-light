@@ -22,6 +22,9 @@ var uuid = require("uuid");
 
 const retry = require('retry-as-promised')
 
+var STATE    = require('./utils').STATE;
+var actionproxy = require('./actionproxy');
+
 var retryOptions = {
   max: config.retries.number, 
   timeout: 60000, // TODO: use action time limit?
@@ -42,26 +45,20 @@ var actions = {};
 /*
  * OpenWhisk action invoke local implementation
  * 
- * Create activation in db
- * 		if not blocking respond with activation
+ * Get action from local repository
+ *  if not exist, get from ownext and update local repository
  * 
- * Invoke action on openwhisk local Docker backend
- * 		if backend throws "action missing" exception
- * 			get specified action from global openwhisk
- * 			update local action registry
- * 			update bursting service action registry
- * 			invoke action on openwhisk local Docker backend and return result
- * 			if blocking
- * 				update activation
+ *  Retry Allocate container
+ *  	if failed:
+ *    	ownext.invoke
+ *  
+ *  activations.create
+ * 	 if not blocking respond with activation
  * 
- * 		if backend throws "total capacity limit" exception
- * 			delegate action to bursting service
- * 			update activation
- * 			if blocking
- * 				respond with result
- * 	
- * 	update activation	
- * 	if blocking
+ *  actionProxy.invoke
+ * 	 update activation
+ * 
+ *  if blocking
  * 		respond with result
  * 
  */
@@ -75,8 +72,8 @@ function handleInvokeAction(req, res) {
   console.log("headers: " + JSON.stringify(req.headers));
 
   var start = new Date().getTime();
-  this["api_key"] = from_auth_header(req);
-  console.log("API KEY: " + this.api_key);
+  var api_key = from_auth_header(req);
+  console.log("API KEY: " + api_key);
 
   function updateAndRespond(activation, result, err) {
     console.log("raw result: " + JSON.stringify(result));
@@ -85,7 +82,10 @@ function handleInvokeAction(req, res) {
     var rc = 200;
 
     if (err !== undefined) {
-      console.log("err.error.error:" + JSON.stringify(err));
+			//TODO: fix error handling properly
+			var msg = err.error ? err.error : err;
+      msg = err.error ? err.error : err;
+      console.log("err.error.error:" + JSON.stringify(msg));
       response = {
         "result": {
           error: err.error.error
@@ -131,57 +131,58 @@ function handleInvokeAction(req, res) {
 		});
 	}
 
-
-		function invokeWithRetries(action, activation) {
-			console.log("starting invoke with retries");
-			retry(function () { return backend.invoke(req.params.actionName, action, req.body, this.api_key) }, retryOptions).then((result) => {
-				console.log("=========>>>> retry resolved  " + JSON.stringify(result));
-				updateAndRespond(activation, result);
-			}).catch(function (err) { 
-                            updateAndRespond(activation, {}, {error:{error:err}});
-                          });
-		}
-
-        _getAction(req).then((action) => {
-          createActivationAndRespond(req, res, start).then((activation) => {
-			backend.invoke(req.params.actionName, action, req.body, this.api_key)
-		      .then((result) => {
-			 	updateAndRespond(activation, result);
-		      })
-              .catch(function (e) {
-				if (e == messages.TOTAL_CAPACITY_LIMIT) {
-			      console.log("Maximal local capacity reached.");
-
-				  invokeWithRetries(action, activation).catch((e) => {
-					console.log("=========>>>> retry catched  " + e);
-					if (e != messages.TOTAL_CAPACITY_LIMIT) {
-                      processErr(req, res, e);
-					} else {
-                      if (config.delegate_on_failure) {
-					    console.log("Delegating action invoke to bursting ow service");
+	_getAction(req).then((action) => {
+		retry(function () { return backend.getActionContainer(req.params.actionName, action) }, retryOptions).then((actionContainer) => {
+			createActivationAndRespond(req, res, start).then((activation) => {
+				console.log("--- container allocated");
+				actionproxy.init(action, actionContainer)
+					.then(() => {
+						console.log("--- container initialized");
+						// TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
+						var params = req.body;
+						action.parameters.forEach(function(param) { params[param.key]=param.value; });
+						actionproxy.run(req.params.actionName, actionContainer.address, api_key, params).then(function(result){
+							console.log("invoke request returned with " + result);
+							Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
+							updateAndRespond(activation, result);
+							return;
+						}).catch(function(err){
+							console.log("invoke request failed with " + err);
+							Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
+							updateAndRespond(activation, {}, err);
+						});					
+				}).catch(function(err){
+					console.log("container init failed with " + err);
+					Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
+					updateAndRespond(activation, {}, err);
+				});
+			}).catch(function (e) {
+				if (e != messages.TOTAL_CAPACITY_LIMIT) {
+					processErr(req, res, e);
+				} else {
+					if (config.delegate_on_failure) {
+						console.log("Delegating action invoke to bursting ow service");
 						owproxy.invoke(req).then(function (result) {
-			              console.log("--- RESULT: " + JSON.stringify(result));
-						  updateAndRespond(activation, result);
+							console.log("--- RESULT: " + JSON.stringify(result));
+							updateAndRespond(activation, result);
 						}).catch(function (e) {
-						  console.log("--- ERROR: " + JSON.stringify(e));
-						  updateAndRespond(activation, {}, e);
+							console.log("--- ERROR: " + JSON.stringify(e));
+							updateAndRespond(activation, {}, e);
 						});
-					  } else {
+					} else {
+						console.log("Capacity limit reached");
 						updateAndRespond(activation, {}, e);
 					  }
 					}
-				  })
-				} else {
-				  console.log("Unknown error occured");
-				  updateAndRespond(activation, {}, e);
 				}
-              })
-		    }).catch(function (err) {
-		      processErr(req, res, err);
-	        });
-        }).catch(function (err) {
-          processErr(req, res, err);
-        });
+			});
+		}).catch(function (err) {
+			processErr(req, res, err);
+		});
+	}).catch(function (err) {
+		processErr(req, res, err);
+	});
+
 }
 
 /*

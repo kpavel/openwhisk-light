@@ -6,6 +6,7 @@ var _ = require("underscore");
 
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 const totalCapacity = config.total_capacity || 8; // max number of containers per host
+const STATE    = require('./utils').STATE;
 
 class DockerBackendWithPreemption extends DockerBackend {
 
@@ -43,11 +44,14 @@ class DockerBackendWithPreemption extends DockerBackend {
           /////////////
           // Locking the containers cache
           that.containersLock.writeLock(function (release) {
-            for(var action in that.actions){
-              activeContainers = activeContainers.concat(_.where(that.containers[action], {state: "running"}));
+            var activeContainersNum = 0;
+            for(var key in that.containers){
+              activeContainers += _.filter(that.containers[key], (o) => {
+                return (o.state != STATE.stopped);
+              });
 
               //  TODO: move inactive containers handling to separate cron job
-              inactiveContainers = inactiveContainers.concat(_.filter(that.containers[action], function(o){
+              inactiveContainers = inactiveContainers.concat(_.filter(that.containers[key], (o) => {
                 return ((currentTime - o.used) > containerCleanup);
               }));
             }
@@ -58,7 +62,7 @@ class DockerBackendWithPreemption extends DockerBackend {
 
               // sort active containers by (currentTime - last invoked hrtime) * factor
               var sortedContainers = _.sortBy(activeContainers, function(o){
-                var factor = factors[that.actions[o.actionName].exec.kind] || 1;
+                var factor = factors[o.kind] || 1;
                 return ((currentTime - o.used) / factor);
               }).reverse();
 
@@ -68,9 +72,8 @@ class DockerBackendWithPreemption extends DockerBackend {
               var fnStop = function stop(containerInfo){
                 return new Promise((resolve) => {
                   containerInfo.container.stop(function(data){
-                    containerInfo['state'] = 'stopped';
+                    containerInfo['state'] = STATE.stopped;
                     delete containerInfo['address'];
-                    delete containerInfo['busy'];
                     resolve();
                   });
                 });

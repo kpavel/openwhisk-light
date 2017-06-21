@@ -46,9 +46,9 @@ class DockerBackendWithPreemption extends DockerBackend {
           that.containersLock.writeLock(function (release) {
             var activeContainersNum = 0;
             for(var key in that.containers){
-              activeContainers += _.filter(that.containers[key], (o) => {
+              activeContainers = activeContainers.concat(_.filter(that.containers[key], (o) => {
                 return (o.state != STATE.stopped);
-              });
+              }));
 
               //  TODO: move inactive containers handling to separate cron job
               inactiveContainers = inactiveContainers.concat(_.filter(that.containers[key], (o) => {

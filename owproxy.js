@@ -37,7 +37,7 @@ module.exports = {
 
   // TODO: consider to use proxy instead. it will save the response handling in caller
   invoke: function invoke(req) {
-    return utils.request("POST", nextOpenwhiskApi + req.path, req.body, {"authorization": req.get("authorization")});
+    return utils.request("POST", nextOpenwhiskApi + req.url, req.body, {"authorization": req.get("authorization")});
   },
 
   getAction: function getAction(req) {

@@ -8,7 +8,7 @@ const messages = require('./messages');
 var _ = require("underscore");
 
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
-var totalCapacity = config.total_capacity || 10; // maximum amount of action containers that we can run
+var totalCapacity = config.total_capacity || 0; // maximum amount of action containers that we can run
 const initTimeout = config.init_timeout || 10000; // action container init timeout in milliseconds
 
 

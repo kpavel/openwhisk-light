@@ -5,7 +5,7 @@ var cron = require("cron");
 var _ = require("underscore");
 
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
-const totalCapacity = config.total_capacity || 8; // max number of containers per host
+const totalCapacity = config.total_capacity || 0; // max number of containers per host
 const STATE    = require('./utils').STATE;
 
 class DockerBackendWithPreemption extends DockerBackend {

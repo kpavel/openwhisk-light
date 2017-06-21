@@ -1,3 +1,4 @@
+const owproxy = require('./owproxy.js');
 var openwhisk = require('openwhisk');
 
 const messages = require('./messages');
@@ -42,8 +43,9 @@ function handleGetActivation(req, res) {
         res.send(result.activation);
     }).catch(function (err) {
         console.log(err);
-        res.status(502).send(buildResponse(req, err));
-    });	
+        console.log("Delegating activation get to proxy");
+        owproxy.proxy(req, res);
+    });
 }
 
 function handleGetActivationLogs(req, res) {

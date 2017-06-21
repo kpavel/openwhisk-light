@@ -75,11 +75,8 @@ function handleInvokeAction(req, res) {
   var api_key = from_auth_header(req);
   console.log("API KEY: " + api_key);
 
-  function updateAndRespond(activation, result, err) {
-    console.log("raw result: " + JSON.stringify(result));
-    console.log("activation: " + JSON.stringify(activation));
-    var response;
-    var rc = 200;
+	function buildResponse(result, err){
+		var response;
 
     if (err !== undefined) {
 			//TODO: fix error handling properly
@@ -93,7 +90,6 @@ function handleInvokeAction(req, res) {
         "status": "action developer error",
         "success": false
       };
-      rc = 502;
     } else {
       response = {
         result,
@@ -101,6 +97,22 @@ function handleInvokeAction(req, res) {
         "success": true
       };
     }
+
+		return response;
+	}
+
+  function respond(result, err){
+		var rc = err ? 502 : 200;
+		var response = buildResponse(result, err);
+
+		res.status(rc).send(response.result);
+	}
+
+  function updateAndRespond(activation, result, err) {
+    console.log("raw result: " + JSON.stringify(result));
+    console.log("activation: " + JSON.stringify(activation));
+    var rc = err ? 502 : 200;
+		var response = buildResponse(result, err);
 
 	  activations.getActivation(activation.activationId).then(function(activationDoc) {
               console.log('updating activation: ' + JSON.stringify(activationDoc));
@@ -118,7 +130,7 @@ function handleInvokeAction(req, res) {
 					console.log("responding: " + JSON.stringify(response));
 
 					if (req.query.result === "true") {
-						res.status(rc).send(activationDoc.activation.response.result);
+						res.status(rc).send(response.result);
 					} else {
 						res.status(rc).send(activationDoc.activation);
 					}
@@ -156,27 +168,29 @@ function handleInvokeAction(req, res) {
 					Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
 					updateAndRespond(activation, {}, err);
 				});
-			}).catch(function (e) {
-				if (e != messages.TOTAL_CAPACITY_LIMIT) {
-					processErr(req, res, e);
+			}).catch(function (err) {
+			  processErr(req, res, err);
+		  });
+		}).catch(function (e) {
+			console.log("backend.getActionContainer retry error: " + e);
+		  if (e != messages.TOTAL_CAPACITY_LIMIT) {
+				processErr(req, res, e);
+			} else {
+				if (config.delegate_on_failure) {
+					console.log("Delegating action invoke to bursting ow service");
+					// return owproxy.proxy(req, res); // can be changed to this single line once the "Error: write after end" bug resolved
+					owproxy.invoke(req).then(function (result) {
+						console.log("--- RESULT: " + JSON.stringify(result));
+						respond(result);
+					}).catch(function (e) {
+						console.log("--- ERROR: " + JSON.stringify(e));
+						respond({}, e);
+					});
 				} else {
-					if (config.delegate_on_failure) {
-						console.log("Delegating action invoke to bursting ow service");
-						owproxy.invoke(req).then(function (result) {
-							console.log("--- RESULT: " + JSON.stringify(result));
-							updateAndRespond(activation, result);
-						}).catch(function (e) {
-							console.log("--- ERROR: " + JSON.stringify(e));
-							updateAndRespond(activation, {}, e);
-						});
-					} else {
-						console.log("Capacity limit reached");
-						updateAndRespond(activation, {}, e);
-					}
+					console.log("Capacity limit reached");
+					respond({}, e);
 				}
-			});
-		}).catch(function (err) {
-			processErr(req, res, err);
+			}
 		});
 	}).catch(function (err) {
 		processErr(req, res, err);

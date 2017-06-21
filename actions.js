@@ -82,10 +82,10 @@ function handleInvokeAction(req, res) {
 			//TODO: fix error handling properly
 			var msg = err.error ? err.error : err;
       msg = err.error ? err.error : err;
-      console.log("err.error.error:" + JSON.stringify(msg));
+      console.log("error message: " + JSON.stringify(msg));
       response = {
         "result": {
-          error: err.error.error
+          error: msg 
         },
         "status": "action developer error",
         "success": false

@@ -172,7 +172,6 @@ function handleInvokeAction(req, res) {
 					} else {
 						console.log("Capacity limit reached");
 						updateAndRespond(activation, {}, e);
-					  }
 					}
 				}
 			});

@@ -3,7 +3,14 @@
 DIR=$BATS_TEST_DIRNAME
 
 setup() {
+  load test_helper
+  run npm start --prefix ../&
+  run bash -c "sleep 2"
   run wsk -i action delete owl-test
+}
+
+teardown() {
+  run npm stop --prefix ../
 }
 
 #teardown() {

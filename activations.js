@@ -68,7 +68,8 @@ function handleGetActivationResult(req, res) {
         res.send(result.activation.response);
     }).catch(function (err) {
         console.log(err);
-        res.status(502).send(buildResponse(req, err));
+        console.log("Delegating activation get result to proxy");
+        owproxy.proxy(req, res);
     });	
 }
 

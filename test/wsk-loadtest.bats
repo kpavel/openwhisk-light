@@ -1,6 +1,16 @@
 #!/usr/bin/env bats
 # stress test OW action invocation (including concurrency and potentially queueing)
 # uses https://www.npmjs.com/package/loadtest
+setup() {
+  load test_helper
+  run npm start --prefix ../&
+  run bash -c "sleep 2"
+}
+
+teardown() {
+  run npm stop --prefix ../
+}
+
 
 @test "stress test of action invocation with loadtest" {
   APIHOST=$(wsk property get --apihost | awk '{print $4}')

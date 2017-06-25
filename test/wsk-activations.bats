@@ -3,12 +3,16 @@
 DIR=$BATS_TEST_DIRNAME
 
 setup() {
+  load test_helper
+  run npm start --prefix ../&
+  run bash -c "sleep 2"
   run wsk -i action delete owl-test
 }
 
-#teardown() {
-#  run wsk -i action delete owl-test
-#}
+teardown() {
+  run wsk -i action delete owl-test
+  run npm stop --prefix ../
+}
 
 @test "wsk action invoke owl-test non-blocking and check activation" {
   run bash -c "wsk -i action update owl-test --kind nodejs:6 $DIR/owl-test.js > /dev/null 2>&1"

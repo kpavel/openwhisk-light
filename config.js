@@ -1,5 +1,5 @@
 module.exports = {
-  total_capacity: 5,
+  total_capacity: process.env.TOTAL_CAPACITY || 5,
   preemption: {
     enabled: false,
     period: 10,
@@ -14,7 +14,7 @@ module.exports = {
   },
   retries: {
 	  timeout: 2000, //msec
-	  number: 5
+	  number: process.env.RETRIES || 3 
   },
-  delegate_on_failure: false
+  delegate_on_failure:  process.env.DELEGATE_ON_FAILURE || false
 };

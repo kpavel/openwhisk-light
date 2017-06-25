@@ -176,7 +176,7 @@ function handleInvokeAction(req, res) {
 		  if (e != messages.TOTAL_CAPACITY_LIMIT) {
 				processErr(req, res, e);
 			} else {
-				if (config.delegate_on_failure) {
+				if (config.delegate_on_failure == 'true') {
 					console.log("Delegating action invoke to bursting ow service");
 					// return owproxy.proxy(req, res); // can be changed to this single line once the "Error: write after end" bug resolved
 					owproxy.invoke(req).then(function (result) {

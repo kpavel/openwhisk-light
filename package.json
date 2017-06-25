@@ -5,7 +5,8 @@
   "main": "openwhisklight.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node openwhisklight.js"
+    "start": "node openwhisklight.js",
+    "stop": "killall -signal SIGINT openwhisk-light"
   },
   "repository": {
     "type": "git",
@@ -23,8 +24,8 @@
     "ip": "*",
     "openwhisk": "^3.5.1",
     "os": "^0.1.1",
-    "pouchdb-find": "^6.2.0",
     "pouchdb": "*",
+    "pouchdb-find": "^6.2.0",
     "readable-stream": "^2.2.9",
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
@@ -36,6 +37,7 @@
     "underscore": "^1.8.3",
     "url": "^0.11.0",
     "util": "^0.10.3",
-    "validator": "^7.0.0"
+    "validator": "^7.0.0",
+    "winston": "^2.3.1"
   }
 }

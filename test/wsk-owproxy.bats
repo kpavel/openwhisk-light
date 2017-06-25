@@ -1,18 +1,15 @@
 #!/usr/bin/env bats
 
 DIR=$BATS_TEST_DIRNAME
-export DOCKER_HOST=tcp://0.0.0.0:2375
-export OW_LOCAL_DOCKER_NW_NAME=owl
-export TOTAL_CAPACITY=0
-export DELEGATE_ON_FAILURE=true
-export RETRIES=0
+load test_helper
 
 setup() {
-  run npm start --prefix ../>2&
-  run sleep 5
+  run npm start --prefix ../&
+  run bash -c "sleep 2"
 }
 
 teardown() {
+  run wsk -i action delete owl-test
   run npm stop --prefix ../
 }
 
@@ -21,6 +18,7 @@ teardown() {
   actid=`wsk -i action invoke owl-test -p aa BB | cut -d' ' -f 6`
   echo $actid
   res=none
+#  run bash -c "wsk -i activation get $actid | jq '.aa'"
   for i in {1..5}; do res=`wsk -i activation result $actid | jq '.aa'` && test "$res" != "null" && break || sleep 1; done
   echo $res
   [ "$res" = "\"BB\"" ]

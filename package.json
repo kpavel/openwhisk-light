@@ -22,6 +22,7 @@
     "duplexer": "^0.1.1",
     "express": "^4.15.2",
     "ip": "*",
+    "moment": "^2.18.1",
     "openwhisk": "^3.5.1",
     "os": "^0.1.1",
     "pouchdb": "*",

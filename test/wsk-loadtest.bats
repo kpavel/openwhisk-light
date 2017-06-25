@@ -3,12 +3,12 @@
 # uses https://www.npmjs.com/package/loadtest
 setup() {
   load test_helper
-  run npm start --prefix ../&
+  run npm start --prefix $BASE_DIR&
   run bash -c "sleep 2"
 }
 
 teardown() {
-  run npm stop --prefix ../
+  run npm stop --prefix $BASE_DIR
 }
 
 

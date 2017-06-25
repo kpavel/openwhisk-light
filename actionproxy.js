@@ -6,6 +6,8 @@ const initTimeout = config.init_timeout || 10000; // action container init timeo
 
 function init(action, actionContainer) {
   return new Promise((resolve, reject) => {
+    actionContainer.logs = [];
+
     if(actionContainer.inited){
       resolve();
     }

@@ -1,16 +1,15 @@
 #!/usr/bin/env bats
 
-DIR=$BATS_TEST_DIRNAME
 load test_helper
 
 setup() {
-  run npm start --prefix ../&
+  run npm start --prefix $BASE_DIR&
   run bash -c "sleep 2"
 }
 
 teardown() {
   run wsk -i action delete owl-test
-  run npm stop --prefix ../
+  run npm stop --prefix $BASE_DIR
 }
 
 @test "wsk action invoke on owproxy and check activation created" {

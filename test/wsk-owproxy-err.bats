@@ -3,6 +3,7 @@
 DIR=$BATS_TEST_DIRNAME
 load test_helper
 export DELEGATE_ON_FAILURE=false
+export TOTAL_CAPACITY=0
 
 setup() {
   run npm start --prefix ../&

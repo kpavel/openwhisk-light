@@ -10,7 +10,7 @@ var _ = require("underscore");
 const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
 var totalCapacity = config.total_capacity || 0; // maximum amount of action containers that we can run
 const initTimeout = config.init_timeout || 10000; // action container init timeout in milliseconds
-
+const moment = require("moment");
 
 /////////////////////////////////////////////////////////////
 // PrefixStream, requiered to make prefixes in container logs
@@ -234,6 +234,8 @@ class DockerBackend {
     var that = this;
 
     var container = actionContainer.container;
+    actionContainer.logs = [];
+
     return new Promise((resolve, reject) => {
       container.start(function (err, data) {
 
@@ -254,6 +256,23 @@ class DockerBackend {
           console.log("Container containerInfo: " + JSON.stringify(containerInfo));
           container.attach({stream: true, stdout: true, stderr: true}, function (err, stream) {
             stream.pipe(PrefixStream(containerInfo.Name.substr(1) + ": ")).pipe(process.stdout);
+            var logStream=PassThrough();
+            logStream.on('data', function(data) {
+                
+/*                console.log("data: " + data);
+                console.log("JSON.parse(data): " + JSON.parse(data));
+                console.log("JSON.parse(data.toString('utf8')): " + JSON.parse(data.toString('utf8')));
+                console.log("JSON.stringify( JSON.parse(data): " + JSON.stringify(JSON.parse(data)));
+                console.log("JSON.stringify( JSON.parse(data.toString('utf8')): " + JSON.stringify(JSON.parse(data.toString('utf8'))));
+*/
+                 data = data.toString('utf8').split("\r\n");
+                 data.forEach(function(element) {
+                     if(element && !(element.endsWith("XXX") && element.startsWith("XXX"))){
+                         actionContainer.logs.push(moment().format('YYYY-MM-DD hh:mm:ss.SSS ') + element);
+                     }
+                 });
+            });
+            stream.pipe(logStream);
           });
 
           actionContainer.address = containerInfo.NetworkSettings.Networks[that.nwName].IPAddress;

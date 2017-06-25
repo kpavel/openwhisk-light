@@ -1,17 +1,15 @@
 #!/usr/bin/env bats
 
-DIR=$BATS_TEST_DIRNAME
-
 setup() {
   load test_helper
-  run npm start --prefix ../&
+  run npm start --prefix $BASE_DIR&
   run bash -c "sleep 2"
   run wsk -i action delete owl-test
 }
 
 teardown() {
   run wsk -i action delete owl-test
-  run npm stop --prefix ../
+  run npm stop --prefix $BASE_DIR
 }
 
 @test "wsk action invoke owl-test non-blocking and check activation" {
@@ -30,3 +28,11 @@ teardown() {
   [ "$actid" = "" ]
 }
 
+@test "wsk action invoke owl-test blocking and check logs" {
+  run bash -c "wsk -i action update owl-test --kind nodejs:6 $DIR/owl-test.js > /dev/null 2>&1"
+  param="HelloWorld"
+  actid=`wsk -i action invoke owl-test -b -p key $param| cut -d' ' -f 6|head -1`
+  echo actid:$actid
+  log=`wsk -i activation logs $actid` 
+  [[ $log == *$param* ]]
+}

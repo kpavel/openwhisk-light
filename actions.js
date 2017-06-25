@@ -108,7 +108,7 @@ function handleInvokeAction(req, res) {
 		res.status(rc).send(response.result);
 	}
 
-  function updateAndRespond(activation, result, err) {
+  function updateAndRespond(actionContainer, activation, result, err) {
     console.log("raw result: " + JSON.stringify(result));
     console.log("activation: " + JSON.stringify(activation));
     var rc = err ? 502 : 200;
@@ -121,7 +121,7 @@ function handleInvokeAction(req, res) {
 			activationDoc.activation.duration = (end - activationDoc.activation.start);
 
 			activationDoc.activation.response = response;
-
+            activationDoc.activation.logs = actionContainer.logs || [];
 
 	      //store activation 
 	      activations.updateActivation(activationDoc).then(function (doc) {
@@ -156,17 +156,17 @@ function handleInvokeAction(req, res) {
 						actionproxy.run(req.params.actionName, actionContainer.address, api_key, params).then(function(result){
 							console.log("invoke request returned with " + result);
 							Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
-							updateAndRespond(activation, result);
+							updateAndRespond(actionContainer, activation, result);
 							return;
 						}).catch(function(err){
 							console.log("invoke request failed with " + err);
 							Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
-							updateAndRespond(activation, {}, err);
+							updateAndRespond(actionContainer, activation, {}, err);
 						});					
 				}).catch(function(err){
 					console.log("container init failed with " + err);
 					Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
-					updateAndRespond(activation, {}, err);
+					updateAndRespond(actionContainer, activation, {}, err);
 				});
 			}).catch(function (err) {
 			  processErr(req, res, err);

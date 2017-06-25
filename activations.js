@@ -56,7 +56,8 @@ function handleGetActivationLogs(req, res) {
         res.send({logs: result.activation.logs});
     }).catch(function (err) {
         console.log(err);
-        res.status(502).send(buildResponse(req, err));
+        console.log("Delegating activation logs get to proxy");
+        owproxy.proxy(req, res);
     });	
 }
 

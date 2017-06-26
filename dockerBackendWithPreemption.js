@@ -12,6 +12,12 @@ class DockerBackendWithPreemption extends DockerBackend {
     this.start_preemption();
   }
 
+ /**
+ * Keeps 'hot' containers running and stop 'cold'
+ *
+ * based on configuration periodically validates whether container preeption needed (e.g. resource capacity reached)
+ * following  high and low watermarks and container startup cost decided which and how many containers will be stopped
+ */
   start_preemption(){
     const that = this;
 

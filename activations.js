@@ -9,7 +9,12 @@ db.createIndex({
   index: {fields: ['activation.start']}
 }).then((res)=>{console.debug("indexing res: " + JSON.stringify(res));}).catch((err)=>{console.error("indexing error: " + err)});
 
-
+/**
+ * Gets all activations from local cache and sends result
+ *
+ * @param {Object} req
+ * @param {Object} res
+ */
 function handleGetActivations(req, res) {
 	console.debug("------in activations list with " + req.originalUrl);
 	
@@ -26,6 +31,13 @@ function handleGetActivations(req, res) {
 	}).catch((err)=>{console.error("find error: " + err)});	
 }
 
+/**
+ * Gets activation from local cache and sends result
+ *
+ * If activation not found delegates request to openwhisk next
+ * @param {Object} req
+ * @param {Object} res
+ */
 function handleGetActivation(req, res) {
 	console.debug("in activations get with " + req.originalUrl);
 	  
@@ -39,6 +51,13 @@ function handleGetActivation(req, res) {
     });
 }
 
+/**
+ * Gets activation logs from local cache and sends result
+ *
+ * If activation not found delegates request to openwhisk next
+ * @param {Object} req
+ * @param {Object} res
+ */
 function handleGetActivationLogs(req, res) {
 	console.debug("in activations logs get with " + req.originalUrl);
 	  
@@ -52,6 +71,13 @@ function handleGetActivationLogs(req, res) {
     });	
 }
 
+/**
+ * Gets activation result from local cache and sends result
+ *
+ * If activation not found delegates request to openwhisk next
+ * @param {Object} req
+ * @param {Object} res
+ */
 function handleGetActivationResult(req, res) {
 	console.debug("in activations result get with " + req.originalUrl);
 	  
@@ -65,14 +91,32 @@ function handleGetActivationResult(req, res) {
     });	
 }
 
+/**
+ * Creates activation in local cache
+ *
+ * @param {Object} activationDoc
+ * @return {Object} activationDoc
+ */
 function createActivation(activationDoc) {
   return db.put({_id:activationDoc.activationId, activation:activationDoc});
 }
 
+/**
+ * Updates activation in local cache
+ *
+ * @param {Object} activationDoc
+ * @return {Object} activationDoc
+ */
 function updateActivation(activationDoc) {
   return db.put(activationDoc);
 }
 
+/**
+ * Returns activation from local cache
+ *
+ * @param {Object} activationId
+ * @return {Object} activationDoc
+ */
 function getActivation(activationId) {
   return db.get(activationId);
 }

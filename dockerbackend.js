@@ -261,6 +261,19 @@ class DockerBackend {
     });
   }
 
+ /**
+ * Allocates action container for specified action from a local pool
+ *
+ * 1. Attempts to find free running container
+ * 2. In case there no free running containers attempts to start stopped (cold) container
+ * 3. If there no free stopped container new action container created 
+ *
+ * In 2 and 3 validates capacity contraints and throws error on failure
+ * @param {String} actionName
+ * @param {String} actionKind
+ * @param {String} actionImage
+ * @return {Promise} promise
+ */
   getActionContainer(actionName, actionKind, actionImage){
     var that = this;
 
@@ -333,10 +346,16 @@ class DockerBackend {
     });
   }
 
-  // pulls docker image from docker hub in case of blackbox action kind
-  // TODO: add validations that action image exists
-  // TODO: deprecate containers
+  /**
+  * Pulls docker image from docker hub in case of blackbox action kind
+  *
+  * @param {String} actionName
+  * @param {String} kind
+  * @param {String} image
+  * @return {Promise} promise
+  */
   fetch(actionName, kind, image){
+    // TODO: add validations that action image exists
     var that = this;
     return new Promise((resolve, reject) => {
       if(!that.containers[actionName]){

@@ -36,24 +36,29 @@ const DockerBackend = require('./dockerbackend.js'),
 console.debug("dockerhost: " + dockerhost);
 
 
-/*
- * OpenWhisk action invoke local implementation
- * 
+ /**
+ * Invokes action in Openwhisk light platform
+ *
+ * Code flow:
+ *
  * Get action from local repository
- *  if not exist, get from ownext and update local repository
- * 
+ *   if not exist, get from ownext and update local repository
+ *
  *  Retry Allocate container
- *  	if failed:
- *     	  ownext.invoke
- *  
+ *    if failed:
+ *      ownext.invoke
+ *
  *  activations.create
- * 	 if not blocking respond with activation
- * 
+ *    if not blocking respond with result
+ *
  *  actionProxy.invoke
- * 	 update activation
- * 
+ *   update activation
+ *
  *  if blocking
- * 		respond with result
+ *    respond with result
+ *
+ * @param {Object} req
+ * @param {Object} res
  */
 function handleInvokeAction(req, res) {
   var start = new Date().getTime();
@@ -149,12 +154,14 @@ function handleInvokeAction(req, res) {
   });
 }
 
-/*
+/**
  * Action get name. Also currently used to update openwhisk local actions registry
  * 
  * Get action from openwhisk global
  * Update local actions registry
  * Update bursting service actions registry
+ * @param {Object} req
+ * @param {Object} res
  */
 function handleGetAction(req, res) {
   var start = new Date().getTime();
@@ -177,11 +184,13 @@ function handleGetAction(req, res) {
   });
 }
 
-/*
- * Delegate action delete to openwhisk global
+/**
+ * Delegate action delete to openwhisk next
  * 
  * delete action from local registry
  * delete action from bursting service
+ * @param {Object} req
+ * @param {Object} res
  */
 function handleDeleteAction(req, res) {
   var api_key = _from_auth_header(req);
@@ -203,6 +212,15 @@ function _from_auth_header(req) {
   return auth;
 }
 
+/**
+ * Get action from local cashe.
+ *
+ * In case action missing in local cashe request action from openwhisk next and update local cashe
+ *
+ * delete action from local registry
+ * delete action from bursting service
+ * @param {Object} req
+ */
 function _getAction(req) {
   var that = this;
   return new Promise(function (resolve, reject) {

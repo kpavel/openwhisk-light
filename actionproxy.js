@@ -4,6 +4,16 @@ const utils = require('./utils'),
       config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
       initTimeout = config.init_timeout || 10000; // action container init timeout in milliseconds
 
+/**
+ * Initilizes action container
+ *
+ * returns promise resolved when action container completes initialization and ready to run actions
+ * rejects messages.INIT_TIMEOUT_ERROR in case initialization not completed on time
+ *
+ * @param {Object} action
+ * @param {Object} actionContainer
+ * @return {Promise} promise
+ */
 function init(action, actionContainer) {
   return new Promise((resolve, reject) => {
     actionContainer.logs = [];
@@ -57,7 +67,17 @@ function init(action, actionContainer) {
     waitToInit();
   });
 }
- 
+
+/**
+ * Runs action inside action container
+ *
+ * returns promise resolved with result of action invocation
+ *
+ * @param {Object} actionContainer
+ * @param {String} api_key
+ * @param {Object} params
+ * @return {Promise} promise
+ */
 function run(actionContainer, api_key, params) {
   return utils.request("POST", "http://" + actionContainer.address + ":8080/run", {"value": params, "api_key": api_key, "action_name": actionContainer.actionName, "namespace": "_"});
 }

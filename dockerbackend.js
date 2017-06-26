@@ -1,34 +1,26 @@
-var Docker = require('dockerode');
-var urllib = require("url");
-var validator = require('validator');
-const os = require("os");
-
-const messages = require('./messages');
-
-var _ = require("underscore");
-
-const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
-var totalCapacity = config.total_capacity || 0; // maximum amount of action containers that we can run
-const initTimeout = config.init_timeout || 10000; // action container init timeout in milliseconds
-const moment = require("moment");
+const Docker = require('dockerode'),
+      urllib = require("url"),
+      os = require("os"),
+      messages = require('./messages'),
+      _ = require("underscore"),
+      config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
+      totalCapacity = config.total_capacity || 0, // maximum amount of action containers that we can run
+      initTimeout = config.init_timeout || 10000, // action container init timeout in milliseconds
+      moment = require("moment"),
+      util    = require('util'),
+      stream  = require('stream'),
+      PassThrough = stream.PassThrough || require('readable-stream').PassThrough,
+      duplex  = require('duplexer'),
+      split   = require('split'),
+      through = require('through'),
+      //      cgroupParent = process.env.CGROUP_PARENT,
+      STATE    = require('./utils').STATE,
+      ReadWriteLock = require('rwlock'),
+      ip = require('ip');
 
 /////////////////////////////////////////////////////////////
 // PrefixStream, requiered to make prefixes in container logs
 /////////////////////////////////////////////////////////////
-var util    = require('util');
-var stream  = require('stream');
-
-var PassThrough = stream.PassThrough ||
-  require('readable-stream').PassThrough;
-
-var duplex  = require('duplexer');
-var split   = require('split');
-var through = require('through');
-
-var cgroupParent = process.env.CGROUP_PARENT;
-
-var STATE    = require('./utils').STATE;
-
 function PrefixStream (prefix) {
   if ( ! (this instanceof PrefixStream)) {
     return new PrefixStream(prefix);
@@ -64,11 +56,9 @@ class DockerBackend {
 
     //e.g. { $ACTION_NAME: [{ state: "created", container: container_object, used: timestamp_seconds... , ] };
     this.containers = {};
-
-    var ReadWriteLock = require('rwlock');
     this.containersLock = new ReadWriteLock();
 
-    // TODO: as containers kept in memory when agent restarted what should happen with it's containers?
+    // remove all action containers (having label "action")
     this._cleanup({ "label": [ "action" ] });
 
     var that = this;
@@ -81,10 +71,10 @@ class DockerBackend {
         that._get_number_of_nodes().then((nodes) => {
           that.nodesNumber = nodes;
         });
-        console.log('Retrieving my IP');
+        console.debug('Retrieving my IP');
         that._get_ip_in_net(this.nwName).then((ip) => {
           that.myIP = ip;
-          console.log("My IP: " + that.myIP);
+          console.debug("My IP: " + that.myIP);
         });
       }
     });
@@ -131,7 +121,7 @@ class DockerBackend {
     var that = this;
     return new Promise((resolve,reject) => {
       const hostname = os.hostname();
-      console.log("-hostname: " + hostname);
+      console.debug("hostname: " + hostname);
 
       if(that.nwName){
         resolve(that.nwName);
@@ -139,7 +129,7 @@ class DockerBackend {
         // get node container info
         that.docker.getContainer(hostname).inspect((err, containerInfo) => {
           if(err){
-            console.log("jErr: " + JSON.stringify(err));
+            console.error("failed to discover network name: " + JSON.stringify(err));
             return reject(err);
           }
 
@@ -161,13 +151,11 @@ class DockerBackend {
   //    (assuming that we are running on the docker host)
   _get_ip_in_net(nwName) {
     var that = this;
-    var os = require('os');
-    var ip = require('ip');
     return new Promise((resolve,reject) => {
         // get network info
         that.docker.getNetwork(nwName).inspect((err, networkInfo) => {
           if(err){
-            console.log("Err: " + JSON.stringify(err));
+            console.error("Failed to discover docker network: " + JSON.stringify(err));
             return reject(err);
           }
 
@@ -175,33 +163,31 @@ class DockerBackend {
           //console.log("net: " + JSON.stringify(networkInfo.IPAM.Config));
           var subnet = networkInfo.IPAM.Config[0].Subnet;
           var gateway = networkInfo.IPAM.Config[0].Gateway.split('/')[0];
-          console.log("subnet: " + subnet);
+          console.debug("subnet: " + subnet);
           // inspect OS settings to find self IP in the above subnet
           var ifaces = os.networkInterfaces();
-          //console.log(JSON.stringify(ifaces));
           for (var iface in ifaces) {
             var iface = ifaces[iface];
             for (var alias in iface) {
               var alias = iface[alias];
-              //console.log(JSON.stringify(alias));
               if ('IPv4' !== alias.family || alias.internal !== false) {
                 continue;
               }
-              console.log("Found address: " + alias.address);
+              console.debug("Found address: " + alias.address);
               if(ip.cidrSubnet(subnet).contains(alias.address)) {
-                console.log("FOUND match for " + subnet);
+                console.debug("FOUND match for " + subnet);
                 return resolve(alias.address);
               }
             }
           }
           // if got here, we are probably running on the host itself
-          console.log("NO match found, returning gateway address: " + gateway);
+          console.debug("NO match found, returning gateway address: " + gateway);
           resolve(gateway);
         });
     });
   };
 
-  //TODO: Do we need cleanup at all? Preemption should handle it much better
+  //TODO: Consider to move the cleanup code to preemption in a scope of container deprecation PR
   // e.g. to cleanup all containers having "action" label: var filter = { "label": [ "action" ] };
   _cleanup(filter){
     var that = this;
@@ -217,13 +203,13 @@ class DockerBackend {
       });
     };
 
-    const opts={ "filters": filter, all: true};
+    const opts={"filters": filter, all: true};
     return new Promise((resolve,reject) => {
       that.docker.listContainers(opts, function (err, containers) {
         if(containers.length > 0){
           Promise.all(containers.map(fn_rm)).then((responses) => {console.log("Containers cleanup finished"); resolve()});
         }else{
-          console.log("nothing to cleanup");
+          console.debug("nothing to cleanup");
           resolve();
         }
       });
@@ -240,7 +226,7 @@ class DockerBackend {
       container.start(function (err, data) {
 
         if(err){
-          console.log("-----------ERROR STARTING CONTAINER: " + JSON.stringify(err));
+          console.error("error starting container: " + JSON.stringify(err));
 
           if(JSON.stringify(err).indexOf("cannot allocate memory") > 0){
             err = new Error(messages.MEMORY_LIMIT);
@@ -249,22 +235,15 @@ class DockerBackend {
           return reject(err);
         }
 
-        console.log("Container started");
+        console.debug("Container started");
         container.inspect(function (err, containerInfo) {
           var prefix = containerInfo.Name.substr(1) + ": ";
 
-          console.log("Container containerInfo: " + JSON.stringify(containerInfo));
+//          console.debug("Container containerInfo: " + JSON.stringify(containerInfo));
           container.attach({stream: true, stdout: true, stderr: true}, function (err, stream) {
             stream.pipe(PrefixStream(containerInfo.Name.substr(1) + ": ")).pipe(process.stdout);
             var logStream=PassThrough();
             logStream.on('data', function(data) {
-                
-/*                console.log("data: " + data);
-                console.log("JSON.parse(data): " + JSON.parse(data));
-                console.log("JSON.parse(data.toString('utf8')): " + JSON.parse(data.toString('utf8')));
-                console.log("JSON.stringify( JSON.parse(data): " + JSON.stringify(JSON.parse(data)));
-                console.log("JSON.stringify( JSON.parse(data.toString('utf8')): " + JSON.stringify(JSON.parse(data.toString('utf8'))));
-*/
                  data = data.toString('utf8').split("\r\n");
                  data.forEach(function(element) {
                      if(element && !(element.endsWith("XXX") && element.startsWith("XXX"))){
@@ -300,7 +279,6 @@ class DockerBackend {
 
         if(activeContainers.length){
           activeContainers[0].state = STATE.allocated; //storing timestamp of when container became busy for preemption purposes
-          console.log('---RELEASE 0');
           release();
           return resolve(activeContainers[0]);
         }
@@ -314,7 +292,7 @@ class DockerBackend {
           }).length;
         }
 
-        console.log("checking if didn't reach full capacity: " + activeContainersNum + "<" + totalCapacity * that.nodesNumber);
+        console.debug("checking if didn't reach full capacity: " + activeContainersNum + "<" + totalCapacity * that.nodesNumber);
         if(activeContainersNum >= totalCapacity * that.nodesNumber){
           release();
           return reject(messages.TOTAL_CAPACITY_LIMIT);
@@ -346,7 +324,7 @@ class DockerBackend {
             
             that._startContainer(actionContainer).then(function(){
               actionContainer.state = STATE.allocated;
-              console.log("address: " + actionContainer.address);
+              console.debug("address: " + actionContainer.address);
               resolve(actionContainer);
             });
           });
@@ -359,7 +337,6 @@ class DockerBackend {
   // TODO: add validations that action image exists
   // TODO: deprecate containers
   fetch(actionName, kind, image){
-    console.log("in " + actionName + " action resources fetch");
     var that = this;
     return new Promise((resolve, reject) => {
       if(!that.containers[actionName]){
@@ -370,44 +347,42 @@ class DockerBackend {
         console.log("pulling image " + image);
         that.docker.pull(image, function(err, stream){
           if(err){
-            console.log("Error pulling docker image: " + JSON.stringify(err));
+            console.error("Error pulling docker image: " + JSON.stringify(err));
             return reject(err);
           }
 
           that.docker.modem.followProgress(stream, (err, output) => {
             if(err){
-              console.log("Error pulling docker image: " + JSON.stringify(err));
+              console.error("Error pulling docker image: " + JSON.stringify(err));
               return reject(err);
             }else{
-              console.log("pull finished: " + JSON.stringify(output));
+              console.debug("pull finished: " + JSON.stringify(output));
               return resolve();
             }
           });
         });
       }else{
-        console.log("action resources fetched: " + actionName);
+        console.debug("action resources fetched: " + actionName);
         return resolve();
       }
     });
   };
 
   _createContainer(actionName, actionKind, actionImage){
-      console.log("========" + actionName + ":" + actionKind + ":" + actionImage);
     var that = this;
     var image = actionImage || actionKind.replace(":", "") + "action";
-    console.log("========" + actionName + ":" + image);
     return new Promise((resolve, reject) => {
       that.docker.createContainer({
         Tty: true, Image: image,
-        NetworkMode: that.nwName, 'HostConfig': {NetworkMode: that.nwName, CgroupParent: cgroupParent},
+        NetworkMode: that.nwName, 'HostConfig': {NetworkMode: that.nwName},//, CgroupParent: cgroupParent},
         Env: ["__OW_API_HOST="+"http://"+this.myIP+":"+process.env.PORT],
         Labels: {"action": actionName}},
         function (err, container) {
           if(err){
-            console.log("ERROR CREATING CONTAINER:  " + JSON.stringify(err));
+            console.error("error creating container:  " + JSON.stringify(err));
             return reject(err);
           }else{
-            console.log("container created: " + JSON.stringify(container));
+            console.debug("container created: " + JSON.stringify(container));
             return resolve(container);
           }
         }

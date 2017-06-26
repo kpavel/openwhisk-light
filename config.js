@@ -1,3 +1,15 @@
+const logger = require('winston');
+
+logger.add(logger.transports.File, { filename: 'owl.log' });
+console.error=logger.error;
+console.log=logger.info;
+console.info=logger.info;
+console.debug=logger.debug;
+console.warn=logger.warn;
+
+logger.level = process.env.LOG_LEVEL || 'debug';
+
+
 module.exports = {
   total_capacity: process.env.TOTAL_CAPACITY || 5,
   preemption: {

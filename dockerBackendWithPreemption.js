@@ -1,12 +1,9 @@
-const DockerBackend = require('./dockerbackend.js');
-const messages = require('./messages');
-
-var cron = require("cron");
-var _ = require("underscore");
-
-const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
-const totalCapacity = config.total_capacity || 0; // max number of containers per host
-const STATE    = require('./utils').STATE;
+const DockerBackend = require('./dockerbackend.js'),
+      cron = require("cron"),
+      _ = require("underscore"),
+      config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
+      totalCapacity = config.total_capacity || 0, // max number of containers per host
+      STATE    = require('./utils').STATE;
 
 class DockerBackendWithPreemption extends DockerBackend {
 
@@ -21,21 +18,17 @@ class DockerBackendWithPreemption extends DockerBackend {
     const preeemptionPeriod = config.preemption.period || 300;     // how often to check whether containers should be stopped
     const preemption_high_percent = config.preemption.high_percent || 0.75;
     const preemption_low_percent = config.preemption.low_percent || 0.25;
-
     const preemptionHighThresholdPerHost = totalCapacity * preemption_high_percent;  // indicates when preeption should be started (75% of max amount)
     const preemptionLowThresholdPerHost = totalCapacity * preemption_low_percent;    // low and high thresholds define an optimal window of containers performace and host utilization balance
-
     const factors = config.preemption.factors || {}; // preemption factor per image type, e.g. java/blackbox container may take more time to start than js one
-
-    //TODO: rename
     const containerCleanup = config.preemption.container_cleanup || 300; //seconds to wait until removing idle containers even if below watermark
 
     var cronjob = new cron.CronJob('*/' + preeemptionPeriod +' * * * * *',
       function() {
-        console.log("checking whether containers preemption applicable");
+        console.debug("checking whether containers preemption applicable");
         that._get_number_of_nodes().then((nodes) => {
           that.nodesNumber = nodes;
-          console.log("system running on " + nodes + " nodes, checking if running containers amount is greater than " + nodes * preemptionHighThresholdPerHost);
+          console.debug("system running on " + nodes + " nodes, checking if running containers amount is greater than " + nodes * preemptionHighThresholdPerHost);
 
           var currentTime = process.hrtime()[0];
           var activeContainers = [];
@@ -56,9 +49,9 @@ class DockerBackendWithPreemption extends DockerBackend {
               }));
             }
 
-            console.log("activeContainers length: " + activeContainers.length);
+            console.debug("activeContainers length: " + activeContainers.length);
             if(activeContainers.length >= nodes * preemptionHighThresholdPerHost){
-              console.log("-starting premption as activeContainers number greater than " + nodes * preemptionHighThresholdPerHost);
+              console.log("starting premption as activeContainers number greater than " + nodes * preemptionHighThresholdPerHost);
 
               // sort active containers by (currentTime - last invoked hrtime) * factor
               var sortedContainers = _.sortBy(activeContainers, function(o){
@@ -66,7 +59,7 @@ class DockerBackendWithPreemption extends DockerBackend {
                 return ((currentTime - o.used) / factor);
               }).reverse();
 
-              console.log("-need to stop " + (sortedContainers.length - Math.floor(nodes * preemptionLowThresholdPerHost)) + " from " + sortedContainers.length);
+              console.log("need to stop " + (sortedContainers.length - Math.floor(nodes * preemptionLowThresholdPerHost)) + " from " + sortedContainers.length);
               sortedContainers = sortedContainers.slice(0, sortedContainers.length - Math.floor(nodes * preemptionLowThresholdPerHost));
 
               var fnStop = function stop(containerInfo){
@@ -81,7 +74,6 @@ class DockerBackendWithPreemption extends DockerBackend {
               };
 
               var actions = sortedContainers.map(fnStop);
-
               var fnRm = (containerInfo) => {
                 return new Promise((resolve) => {
                   if(!containerInfo.container){
@@ -116,7 +108,7 @@ class DockerBackendWithPreemption extends DockerBackend {
               Promise.all(actions).then((responses) => {console.log("Containers preemption finished");release();});
             }else{
               release();
-              console.log("no need for preeption to start, didn't reach the limit yet: " + activeContainers.length + "<" + nodes * preemptionHighThresholdPerHost);
+              console.debug("no need for preeption to start, didn't reach the limit yet: " + activeContainers.length + "<" + nodes * preemptionHighThresholdPerHost);
             }
           });
         });

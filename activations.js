@@ -1,25 +1,17 @@
-const owproxy = require('./owproxy.js');
-var openwhisk = require('openwhisk');
+const owproxy = require('./owproxy.js'),
+      PouchDB = require('pouchdb'),
+      db = new PouchDB('owl.db'),
+      _ = require("underscore");
 
-const messages = require('./messages');
-
-const config = require("./config.js") || {}; // holds node specific settings
-
-
-var PouchDB = require('pouchdb');
-var db = new PouchDB('owl.db');
-var _ = require("underscore");
-
-var stringify = require('json-stringify-safe');
 PouchDB.plugin(require('pouchdb-find'));
 
 db.createIndex({
   index: {fields: ['activation.start']}
-}).then((res)=>{console.log("indexing res: " + JSON.stringify(res));}).catch((err)=>{console.log("indexing error: " + err)});
+}).then((res)=>{console.debug("indexing res: " + JSON.stringify(res));}).catch((err)=>{console.error("indexing error: " + err)});
 
 
 function handleGetActivations(req, res) {
-	console.log("------in activations list with " + req.originalUrl);
+	console.debug("------in activations list with " + req.originalUrl);
 	
 	db.find({
 	  selector: {
@@ -27,18 +19,18 @@ function handleGetActivations(req, res) {
 	  },
 	  sort: [{'activation.start': 'desc'}]
 	}).then((result)=>{
-		console.log("find response: " + JSON.stringify(result));
+		console.debug("find response: " + JSON.stringify(result));
 		result = _.pluck(result.docs, 'activation');
-        console.log("res after pluck: " + JSON.stringify(result));
+        console.debug("res after pluck: " + JSON.stringify(result));
         res.send(result);
-	}).catch((err)=>{console.log("find error: " + err)});	
+	}).catch((err)=>{console.error("find error: " + err)});	
 }
 
 function handleGetActivation(req, res) {
-	console.log("in activations get with " + req.originalUrl);
+	console.debug("in activations get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
-        console.log("res: " + JSON.stringify(result));
+        console.debug("res: " + JSON.stringify(result));
         res.send(result.activation);
     }).catch(function (err) {
         console.log(err);
@@ -48,10 +40,10 @@ function handleGetActivation(req, res) {
 }
 
 function handleGetActivationLogs(req, res) {
-	console.log("in activations logs get with " + req.originalUrl);
+	console.debug("in activations logs get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
-        console.log("res: " + JSON.stringify(result));
+        console.debug("res: " + JSON.stringify(result));
         res.send({logs: result.activation.logs});
     }).catch(function (err) {
         console.log(err);
@@ -61,10 +53,10 @@ function handleGetActivationLogs(req, res) {
 }
 
 function handleGetActivationResult(req, res) {
-	console.log("in activations result get with " + req.originalUrl);
+	console.debug("in activations result get with " + req.originalUrl);
 	  
 	db.get(req.params.activationid).then(function (result) {
-        console.log("res: " + JSON.stringify(result));
+        console.debug("res: " + JSON.stringify(result));
         res.send(result.activation.response);
     }).catch(function (err) {
         console.log(err);

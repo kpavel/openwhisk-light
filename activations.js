@@ -3,7 +3,7 @@ var openwhisk = require('openwhisk');
 
 const messages = require('./messages');
 
-const config = require("./config.js") || {}; // holds node specific settings, consider to use another file, e.g. config.js as option
+const config = require("./config.js") || {}; // holds node specific settings
 
 
 var PouchDB = require('pouchdb');
@@ -19,7 +19,6 @@ db.createIndex({
 
 
 function handleGetActivations(req, res) {
-//	console.log("REQ: " + stringify(req));
 	console.log("------in activations list with " + req.originalUrl);
 	
 	db.find({
@@ -72,26 +71,6 @@ function handleGetActivationResult(req, res) {
         console.log("Delegating activation get result to proxy");
         owproxy.proxy(req, res);
     });	
-}
-
-function buildResponse(req, error){
-    console.log("error.error.error: " + error.error.error);
-    response = {
-        "result": {
-             error: error.error.error
-        },
-        "status": "action developer error",
-        "success": false
-    };
-
-  return {
-    name: req.params.actionName,
-    namespace: req.params.namespace,
-    "publish": false,
-    response,
-    "subject": "owl@il.ibm.com",
-    "version": "0.0.0"
-  }
 }
 
 function createActivation(activationDoc) {

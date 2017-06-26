@@ -62,8 +62,8 @@ function init(action, actionContainer) {
   });
 }
  
-function run(actionName, address, api_key, params) {
-  return utils.request("POST", "http://" + address + ":8080/run", {"value": params, "api_key": api_key, "action_name": actionName, "namespace": "_"});
+function run(actionContainer, api_key, params) {
+  return utils.request("POST", "http://" + actionContainer.address + ":8080/run", {"value": params, "api_key": api_key, "action_name": actionContainer.actionName, "namespace": "_"});
 }
 
 module.exports = {init:init, run:run};

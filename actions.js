@@ -60,28 +60,16 @@ var actions = {};
  * 
  *  if blocking
  * 		respond with result
- * 
  */
 function handleInvokeAction(req, res) {
-  console.log("PATH: " + req.path);
-  console.log("params: " + JSON.stringify(req.params));
-  console.log("namespace: " + req.params.namespace);
-  console.log("actionName: " + req.params.actionName);
-
-  console.log("BODY: " + JSON.stringify(req.body));
-  console.log("headers: " + JSON.stringify(req.headers));
-
   var start = new Date().getTime();
   var api_key = from_auth_header(req);
-  console.log("API KEY: " + api_key);
 
-	function buildResponse(result, err){
-		var response;
+  function buildResponse(result, err){
+	var response;
 
     if (err !== undefined) {
-			//TODO: fix error handling properly
-			var msg = err.error ? err.error : err;
-      msg = err.error ? err.error : err;
+      var msg = getErrorMessage(err);
       console.log("error message: " + JSON.stringify(msg));
       response = {
         "result": {
@@ -98,15 +86,15 @@ function handleInvokeAction(req, res) {
       };
     }
 
-		return response;
-	}
+	return response;
+  }
 
   function respond(result, err){
-		var rc = err ? 502 : 200;
-		var response = buildResponse(result, err);
+	var rc = err ? 502 : 200;
+	var response = buildResponse(result, err);
 
-		res.status(rc).send(response.result);
-	}
+	res.status(rc).send(response.result);
+  }
 
   function updateAndRespond(actionContainer, activation, result, err) {
     console.log("raw result: " + JSON.stringify(result));
@@ -144,7 +132,7 @@ function handleInvokeAction(req, res) {
 	}
 
 	_getAction(req).then((action) => {
-		retry(function () { return backend.getActionContainer(req.params.actionName, action) }, retryOptions).then((actionContainer) => {
+		retry(function () { return backend.getActionContainer(req.params.actionName, action.exec.kind, action.exec.image) }, retryOptions).then((actionContainer) => {
 			createActivationAndRespond(req, res, start).then((activation) => {
 				console.log("--- container allocated");
 				actionproxy.init(action, actionContainer)
@@ -153,7 +141,7 @@ function handleInvokeAction(req, res) {
 						// TODO: use 'run' method of 'action' class, hiding the exact arguments passed to proxy
 						var params = req.body;
 						action.parameters.forEach(function(param) { params[param.key]=param.value; });
-						actionproxy.run(req.params.actionName, actionContainer.address, api_key, params).then(function(result){
+						actionproxy.run(actionContainer, api_key, params).then(function(result){
 							console.log("invoke request returned with " + result);
 							Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
 							updateAndRespond(actionContainer, activation, result);
@@ -214,7 +202,7 @@ function handleGetAction(req, res) {
 	    console.log("got action: " + JSON.stringify(action));
 	    console.log("Registering action under openwhisk edge " + JSON.stringify(action));
 
-        backend.create(req.params.actionName, action)
+        backend.fetch(req.params.actionName, action)
         .then((result) => {
            console.log("action " + req.params.actionName + " registered");
          	 res.send(action);
@@ -267,7 +255,7 @@ function _getAction(req) {
 			owproxy.getAction(req)
 				.then((action) => {
 					console.log("Registering action " + JSON.stringify(action));
-					backend.create(req.params.actionName, action.exec.kind, action.exec.image)
+					backend.fetch(req.params.actionName, action.exec.kind, action.exec.image)
 						.then((result) => {
 							console.log("action " + req.params.actionName + " registered");
 							actions[req.params.actionName] = action;
@@ -300,8 +288,6 @@ function createActivationAndRespond(req, res, start){
 	
 	console.log(1);
 	return new Promise(function(resolve,reject) {
-		console.log(2);
-		
 		console.log(activationId);
 		console.log(stringify(activation));
 		
@@ -324,57 +310,20 @@ function createActivationAndRespond(req, res, start){
 	});
 }
 
-function buildResponse(req, start, result, error){
-  var end = new Date().getTime();
-  var response;
-  if(error !== undefined){
-    console.log("error.error.error: " + error.error.error);
-    response = {
-        "result": {
-             error: error.error.error
-        },
-        "status": "action developer error",
-        "success": false
-    };
-  }else{
-	if(req.query.result === "true"){
-		return result;
-	}else{
-	    response = {
-	        result,
-	        "status": "success",
-	        "success": true
-	    };
-	}
-  }
-
-  return {
-    duration: (end - start),
-    end,
-    "logs": [],
-    name: req.params.actionName,
-    namespace: req.params.namespace,
-    "publish": false,
-    response,
-    start,
-    "subject": "owl@il.ibm.com",
-    "version": "0.0.0"
-  }
-}
-
 function processErr(req, res, err){
-	console.log(err);
-//   	if(req.query.blocking === "true"){
-   		console.log("err.error.error: " + err);
-        var msg = err.error ? err.error : err;
-        msg = err.error ? err.error : err;
+        var msg = getErrorMessage(err);
+        console.log("error occured: " + msg);
          
    		res.status(404).send({
    			error: msg,
    			code: -1
    		});
-//   	}
 }
+
+function getErrorMessage(error){
+    return error ? (error.error ? (error.error.error ? error.error.error : error.error) : error) : "";
+}
+
 module.exports = {
   handleInvokeAction:handleInvokeAction, 
   handleDeleteAction:handleDeleteAction, 

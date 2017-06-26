@@ -33,7 +33,7 @@ class DockerBackendWithPreemption extends DockerBackend {
     var cronjob = new cron.CronJob('*/' + preeemptionPeriod +' * * * * *',
       function() {
         console.log("checking whether containers preemption applicable");
-        that.get_number_of_nodes().then((nodes) => {
+        that._get_number_of_nodes().then((nodes) => {
           that.nodesNumber = nodes;
           console.log("system running on " + nodes + " nodes, checking if running containers amount is greater than " + nodes * preemptionHighThresholdPerHost);
 

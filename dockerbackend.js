@@ -56,7 +56,7 @@ function PrefixStream (prefix) {
 class DockerBackend {
 
   constructor (options) {
-    this.docker = new Docker(this.parse_options(options));
+    this.docker = new Docker(this._parse_options(options));
 
     // in case this environment variable specified this network will be used for action containers.
     this.nwName = process.env.OW_LOCAL_DOCKER_NW_NAME;
@@ -69,20 +69,20 @@ class DockerBackend {
     this.containersLock = new ReadWriteLock();
 
     // TODO: as containers kept in memory when agent restarted what should happen with it's containers?
-    this.cleanup({ "label": [ "action" ] });
+    this._cleanup({ "label": [ "action" ] });
 
     var that = this;
-    this.get_nw_name().then((nwName)=>{
+    this._get_nw_name().then((nwName)=>{
       that.nwName = nwName;
 
       if(!nwName){
         throw new Error("Failed to discover docker network");
       }else{
-        that.get_number_of_nodes().then((nodes) => {
+        that._get_number_of_nodes().then((nodes) => {
           that.nodesNumber = nodes;
         });
         console.log('Retrieving my IP');
-        that.get_ip_in_net(this.nwName).then((ip) => {
+        that._get_ip_in_net(this.nwName).then((ip) => {
           that.myIP = ip;
           console.log("My IP: " + that.myIP);
         });
@@ -90,7 +90,7 @@ class DockerBackend {
     });
   }
 
-  parse_options (options) {
+  _parse_options (options) {
     const socketPath = options.socketPath;
     var dockerurl = options.dockerurl;
 
@@ -108,7 +108,7 @@ class DockerBackend {
     return {host, port, socketPath};
   }
 
-  get_number_of_nodes(){
+  _get_number_of_nodes(){
     var that = this;
     return new Promise(function(resolve,reject) {
       that.docker.info(function(err, res){
@@ -127,7 +127,7 @@ class DockerBackend {
   }
 
   // get network name of the container the current runtime executed in
-  get_nw_name(){
+  _get_nw_name(){
     var that = this;
     return new Promise((resolve,reject) => {
       const hostname = os.hostname();
@@ -159,7 +159,7 @@ class DockerBackend {
   // 2) if we have net interface with IP on that subnet, return this IP
   // 3) otherwise, return the default gateway of that subnet
   //    (assuming that we are running on the docker host)
-  get_ip_in_net(nwName) {
+  _get_ip_in_net(nwName) {
     var that = this;
     var os = require('os');
     var ip = require('ip');
@@ -203,7 +203,7 @@ class DockerBackend {
 
   //TODO: Do we need cleanup at all? Preemption should handle it much better
   // e.g. to cleanup all containers having "action" label: var filter = { "label": [ "action" ] };
-  cleanup(filter){
+  _cleanup(filter){
     var that = this;
 
     function fn_rm(containerInfo){
@@ -230,7 +230,7 @@ class DockerBackend {
     });
   };
   
-  startContainer(actionContainer){
+  _startContainer(actionContainer){
     var that = this;
 
     var container = actionContainer.container;
@@ -282,7 +282,7 @@ class DockerBackend {
     });
   }
 
-  getActionContainer(actionName, action){
+  getActionContainer(actionName, actionKind, actionImage){
     var that = this;
 
     return new Promise((resolve, reject) => {
@@ -329,7 +329,7 @@ class DockerBackend {
           actionContainers[0].state = STATE.reserved;
           release();
 
-          that.startContainer(actionContainers[0]).then(function(){
+          that._startContainer(actionContainers[0]).then(function(){
             actionContainers[0].state = STATE.allocated;
             resolve(actionContainers[0]);
           });
@@ -340,11 +340,11 @@ class DockerBackend {
           that.containers[actionName].push(actionContainer);
           release();
 
-          that.createContainer(actionName, action).then((container)=>{
+          that._createContainer(actionName, actionKind, actionImage).then((container)=>{
             actionContainer.container = container;
-            actionContainer.kind = action.exec.kind;
+            actionContainer.kind = actionKind;
             
-            that.startContainer(actionContainer).then(function(){
+            that._startContainer(actionContainer).then(function(){
               actionContainer.state = STATE.allocated;
               console.log("address: " + actionContainer.address);
               resolve(actionContainer);
@@ -358,8 +358,8 @@ class DockerBackend {
   // pulls docker image from docker hub in case of blackbox action kind
   // TODO: add validations that action image exists
   // TODO: deprecate containers
-  create(actionName, kind, image){
-    console.log("in " + actionName + " action create");
+  fetch(actionName, kind, image){
+    console.log("in " + actionName + " action resources fetch");
     var that = this;
     return new Promise((resolve, reject) => {
       if(!that.containers[actionName]){
@@ -385,21 +385,23 @@ class DockerBackend {
           });
         });
       }else{
-        console.log("action registered: " + actionName);
+        console.log("action resources fetched: " + actionName);
         return resolve();
       }
     });
   };
 
-  createContainer(actionName, action){
+  _createContainer(actionName, actionKind, actionImage){
+      console.log("========" + actionName + ":" + actionKind + ":" + actionImage);
     var that = this;
-    var image = action.exec.image || action.exec.kind.replace(":", "") + "action";
+    var image = actionImage || actionKind.replace(":", "") + "action";
+    console.log("========" + actionName + ":" + image);
     return new Promise((resolve, reject) => {
       that.docker.createContainer({
         Tty: true, Image: image,
         NetworkMode: that.nwName, 'HostConfig': {NetworkMode: that.nwName, CgroupParent: cgroupParent},
         Env: ["__OW_API_HOST="+"http://"+this.myIP+":"+process.env.PORT],
-        Labels: {"action": action.name}},
+        Labels: {"action": actionName}},
         function (err, container) {
           if(err){
             console.log("ERROR CREATING CONTAINER:  " + JSON.stringify(err));

@@ -1,84 +1,80 @@
 ## Modules:
  - api: routes
- - controller: handlers used in routes, orchestrating operations, handle (in memory) cache of actions metadata 
+ - actions: controller, orchestrate operations, handle (in memory) cache of actions metadata 
  - backend: interaction with Docker API (create, delete, start, stop, list, etc), keep in-memory cache of containers metadata, handle preemption policy
  - actionproxy: interaction with REST API of action containers (init, run)
  - owproxy: interaction with REST API of the OpenWhisk service (catalog + bursting)
  - activations: handle persistence of activation records
+ - preemption: keeping 'hot' containers and stopping 'cold'
 
 ## Delete action
 api: route.delete
-- result = controller.deleteAction(action=req.path, auth=req.authorization)
-- res.send(result)
+- actions.deleteAction
 
-controller.deleteAction(action, auth)
-- result = owproxy.deleteAction(action, auth)
+actions.deleteAction
+- result = owproxy.deleteAction
 - delete action from cache
-- return result
+- respond(result)
 
-owproxy.deleteAction(action, auth)
-- send request to OW url (via owclient?)
+owproxy.deleteAction
+- send request to OW url
 - return response
 
 ## Get action
 api: route.get
-- result = controller.getAction(action=req.path, auth=req.authorization)
-- res.send(result)
+- actions.getAction
 
-controller.getAction(action, auth)
-- result = owproxy.getAction(action, auth)
+actions.getAction
+- result = owproxy.getAction
 - update action in cache
-- if action metadata changed: backend.deprecateContainers(action)
-- return result
+- if action metadata changed: backend.deprecateContainers
+- respond(result)
 
-owproxy.getAction(action, auth)
+owproxy.getAction
 - send request to OW url 
 - return response
 
-backend.deprecateContainers(action)
+backend.deprecateContainers
 - mark containers associated with the action as deprecated
 
 ## Invoke action
 api: route.post
-- result = controller.invokeAction(action=req.path, auth=req.authorization, payload=req.body, notifier)
-- notifier(activation):
-  - res.send(activation)
-- res.send(result)
+- actions.invokeAction
 
-controller.invokeAction(action, auth, payload, notifier)
-- if action does not exist in cache: controller.getAction(action, auth)
+actions.invokeAction
+- if action does not exist in cache: actions.getAction
 - retries_options = {timeout, num, condition='out of capacity'}
-- retry [container = backend.allocateContainer(action), retries_option]
+- retry [container = backend.getActionContainer, retries_option]
 - if all retries failed (out of capacity) AND bursting is enabled:
--- response = owproxy.invokeAction(action, auth, payload)
-- activation = activations.createRecord(action, payload)
-- if non-blocking: notifier.returnActivation(activation)
-- if container is 'new': 
-  - actionproxy.init(action, container); 
-  - mark container in cache as not 'new'
-- response = actionproxy.invoke(container, payload)
+-- response = owproxy.invokeAction
+- activation = activations.createActivation
+- if non-blocking: respond(activation.id)
+- actionproxy.init
+- response = actionproxy.invoke
 - activations.updateRecord(activation, response)
-- return response.result
+- if blocking: respond(result)
 
-backend.allocateContainer(action)
+backend.allocateContainer
 - if there are idle (running, non-deprecated, not busy) containers in the action pool, pick one, mark as busy in cache, return
 - if total capacity reached, return 'out of capacity' error
-- if there are stopped containers in the action pool in cache, start container, mark as busy (and 'new') in cache, return
-- add container to cache, mark as busy (and 'new'), create container, return
+- if there are stopped containers in the action pool in cache, mark as busy in cache, start and return
+- add container to cache, mark as busy, create container and return
 
-activations.createRecord(action, payload)
+activations.createRecord
 - put new record in db
 
-activations.updateRecord(activation, response)
+activations.updateRecord
 - update record in db
 
-actionproxy.init(action, container)
-- send request to container's IP:8080/init
-- retry until completion/timeout
+actionproxy.init
+- if container is not 'inited':
+  - send request to container's IP:8080/init
+  - retry until completion/timeout
+	  - mark as inited
 
-actionproxy.invoke(container, payload)	
+actionproxy.invoke
 - send request to container's IP:8080/run passing the payload
-- append logs to response
+- append result to response
 - return response
 
 owproxy.invokeAction(action, auth, payload)

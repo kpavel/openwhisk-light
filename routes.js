@@ -1,10 +1,9 @@
-var express = require('express');
-var router = express.Router({strict: true});
-var bodyParser = require('body-parser');
-
-const actions = require('./actions.js');
-const activations = require('./activations.js');
-const owproxy = require('./owproxy.js');
+const express = require('express'),
+      router = express.Router({strict: true}),
+      bodyParser = require('body-parser'),
+      actions = require('./actions.js'),
+      activations = require('./activations.js'),
+      owproxy = require('./owproxy.js');
 
 router.use(bodyParser.json({limit:'10mb'}));
 

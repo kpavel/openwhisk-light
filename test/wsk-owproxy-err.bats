@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 
 load test_helper
-export DELEGATE_ON_FAILURE=false
-export TOTAL_CAPACITY=0
+export OWL_DELEGATE_ON_FAILURE=false
+export OWL_TOTAL_CAPACITY=0
 
 setup() {
   run npm start --prefix $BASE_DIR&

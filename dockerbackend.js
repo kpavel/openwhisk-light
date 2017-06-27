@@ -13,7 +13,6 @@ const Docker = require('dockerode'),
       duplex  = require('duplexer'),
       split   = require('split'),
       through = require('through'),
-      //      cgroupParent = process.env.CGROUP_PARENT,
       STATE    = require('./utils').STATE,
       ReadWriteLock = require('rwlock'),
       ip = require('ip');
@@ -51,7 +50,7 @@ class DockerBackend {
     this.docker = new Docker(this._parse_options(options));
 
     // in case this environment variable specified this network will be used for action containers.
-    this.nwName = process.env.OW_LOCAL_DOCKER_NW_NAME;
+    this.nwName = process.env.OWL_NET_NAME;
     this.myIP = "unknown";
 
     //e.g. { $ACTION_NAME: [{ state: "created", container: container_object, used: timestamp_seconds... , ] };
@@ -393,8 +392,8 @@ class DockerBackend {
     return new Promise((resolve, reject) => {
       that.docker.createContainer({
         Tty: true, Image: image,
-        NetworkMode: that.nwName, 'HostConfig': {NetworkMode: that.nwName},//, CgroupParent: cgroupParent},
-        Env: ["__OW_API_HOST="+"http://"+this.myIP+":"+process.env.PORT],
+        NetworkMode: that.nwName, 'HostConfig': {NetworkMode: that.nwName},
+        Env: ["__OW_API_HOST="+"http://"+this.myIP+":"+process.env.OWL_PORT],
         Labels: {"action": actionName}},
         function (err, container) {
           if(err){

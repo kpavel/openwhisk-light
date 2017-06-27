@@ -4,7 +4,7 @@ const request = require('request'),
       config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
 
       // NEXT_OPENWHISK_HOST specifies the 'next' OpenWhisk API endpoint (typically the OpenWhisk in the Cloud)
-      nextOpenwhiskHost = process.env.NEXT_OPENWHISK_HOST || 'https://openwhisk.ng.bluemix.net',
+      nextOpenwhiskHost = process.env.OWL_NEXT_OPENWHISK_HOST || 'https://openwhisk.ng.bluemix.net',
       url_path_prefix = config.url_path_prefix || '/api/v1',
       nextOpenwhiskApi = nextOpenwhiskHost + url_path_prefix
 

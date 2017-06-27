@@ -221,10 +221,19 @@ function _getAction(req, fetch) {
 	  //no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
 	  console.debug("getting action " + req.params.actionName + " from owproxy");
 	  owproxy.getAction(req).then((action) => {
-        console.debug("Registering action " + JSON.stringify(action));
+        if(actions[req.params.actionName] && action.version == actions[req.params.actionName].version){
+          console.debug("version of the resolved action identical to cached one: " + action.version + ", no need to update local cache");
+          resolve(action);
+        }else{
+          console.debug("version " + action.version + " of the resolved action differ from cached one, registering action " + JSON.stringify(action));
+        }
+
 		backend.fetch(req.params.actionName, action.exec.kind, action.exec.image).then((result) => {
           console.debug("action " + req.params.actionName + " registered");
           actions[req.params.actionName] = action;
+
+          console.debug("Registered actions ==> " + JSON.stringify(actions));
+
           resolve(action);
 		}).catch(function (e) {
           console.error("Error registering action: " + e);

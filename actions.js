@@ -165,7 +165,7 @@ function handleInvokeAction(req, res) {
  */
 function handleGetAction(req, res) {
   var start = new Date().getTime();
-  _getAction(req).then((action) => {
+  _getAction(req, true).then((action) => {
     res.send(action);
   }).catch((err)=>{
     console.error("action get error: " + err);
@@ -205,25 +205,35 @@ function _from_auth_header(req) {
  * Get action from local cashe.
  *
  * In case action missing in local cashe request action from openwhisk next and update local cashe
- *
+ * 
  * delete action from local registry
  * delete action from bursting service
  * @param {Object} req
+ * @param {Boolean} fetch - if specified will explicitly update local cache with action from remote
  */
-function _getAction(req) {
+function _getAction(req, fetch) {
   var that = this;
   return new Promise(function (resolve, reject) {
 	var action = actions[req.params.actionName];
-	if (action) {
+	if (!fetch && action) {
       resolve(action);
 	} else {
 	  //no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
 	  console.debug("getting action " + req.params.actionName + " from owproxy");
 	  owproxy.getAction(req).then((action) => {
-        console.debug("Registering action " + JSON.stringify(action));
+        if(actions[req.params.actionName] && action.version == actions[req.params.actionName].version){
+          console.debug("version of the resolved action identical to cached one: " + action.version + ", no need to update local cache");
+          resolve(action);
+        }else{
+          console.debug("version " + action.version + " of the resolved action differ from cached one, registering action " + JSON.stringify(action));
+        }
+
 		backend.fetch(req.params.actionName, action.exec.kind, action.exec.image).then((result) => {
           console.debug("action " + req.params.actionName + " registered");
           actions[req.params.actionName] = action;
+
+          console.debug("Registered actions ==> " + JSON.stringify(actions));
+
           resolve(action);
 		}).catch(function (e) {
           console.error("Error registering action: " + e);

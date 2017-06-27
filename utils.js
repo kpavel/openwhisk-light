@@ -17,6 +17,7 @@ function params (method, url, body) {
 }
 
 const STATE = {
+    deprecated : -1,  // should not be used for future action and first target to be removed by preemtion service at some point
 	stopped : 0, 
     reserved : 1,
 	running : 2, // started and inited

@@ -361,6 +361,19 @@ class DockerBackend {
         that.containers[actionName] = [];
       }
 
+      // deprecate containers
+      _.each(that.containers[actionName], function(actionContainer){
+        actionContainer.state = STATE.deprecated;
+
+        actionContainer.container.stop(function(){
+          actionContainer.container.remove(function(){
+            const containerArray = that.containers[actionName];
+            containerArray.splice(containerArray.indexOf(actionContainer), 1);
+          });
+        });
+
+      });
+
       if(kind == "blackbox"){
         console.log("pulling image " + image);
         that.docker.pull(image, function(err, stream){

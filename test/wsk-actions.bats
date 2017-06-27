@@ -52,6 +52,10 @@ teardown() {
 }
 
 @test "wsk action update owl-test" {
+  run bash -c "wsk -i action update owl-test --kind nodejs:6 $DIR/owl-test.js  > /dev/null 2>&1"
+  run bash -c "wsk -i action invoke owl-test -r | jq '.hello'"
+  echo $output
+  [ $output = null ]
   run bash -c "wsk -i action update owl-test --kind nodejs:6 $DIR/owl-test.js -p hello world > /dev/null 2>&1"
   run bash -c "wsk -i action invoke owl-test -r | jq '.hello'"
   echo $output

@@ -44,8 +44,8 @@ api: route.post
 actions.invokeAction
 - if action does not exist in cache: actions.getAction
 - retries_options = {timeout, num, condition='out of capacity'}
-- retry [container = backend.getActionContainer, retries_option]
-- if all retries failed (out of capacity) AND bursting is enabled:
+- retry [container = backend.allocateContainer, retries_option]
+- if all retries failed (out of capacity) AND delegation is enabled:
 -- response = owproxy.invokeAction
 - activation = activations.createActivation
 - if non-blocking: respond(activation.id)

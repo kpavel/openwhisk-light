@@ -165,7 +165,7 @@ function handleInvokeAction(req, res) {
  */
 function handleGetAction(req, res) {
   var start = new Date().getTime();
-  _getAction(req).then((action) => {
+  _getAction(req, true).then((action) => {
     res.send(action);
   }).catch((err)=>{
     console.error("action get error: " + err);
@@ -205,16 +205,17 @@ function _from_auth_header(req) {
  * Get action from local cashe.
  *
  * In case action missing in local cashe request action from openwhisk next and update local cashe
- *
+ * 
  * delete action from local registry
  * delete action from bursting service
  * @param {Object} req
+ * @param {Boolean} fetch - if specified will explicitly update local cache with action from remote
  */
-function _getAction(req) {
+function _getAction(req, fetch) {
   var that = this;
   return new Promise(function (resolve, reject) {
 	var action = actions[req.params.actionName];
-	if (action) {
+	if (!fetch && action) {
       resolve(action);
 	} else {
 	  //no cached action, throwing ACTION MISSING error so the caller will know it needs to be created

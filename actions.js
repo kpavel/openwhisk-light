@@ -165,19 +165,8 @@ function handleInvokeAction(req, res) {
  */
 function handleGetAction(req, res) {
   var start = new Date().getTime();
-
-  console.debug("getting action " + req.params.actionName + " from owproxy");
-  owproxy.getAction(req).then((action)=>{
-    console.debug("got action: " + JSON.stringify(action));
-	console.debug("Registering action under openwhisk edge " + JSON.stringify(action));
-
-    backend.fetch(req.params.actionName, action.exec.kind, action.exec.image).then((result) => {
-      console.log("action " + req.params.actionName + " registered");
-      res.send(action);
-    }).catch(function(e) {
-      console.error(e);
-      _processErr(req, res, e);
-    })
+  _getAction(req).then((action) => {
+    res.send(action);
   }).catch((err)=>{
     console.error("action get error: " + err);
     _processErr(req, res, err);

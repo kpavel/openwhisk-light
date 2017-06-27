@@ -23,9 +23,9 @@ module.exports = {
       "blackbox": 5
     },
   },
-  retries: {
-	  timeout: process.env.OWL_TIMEOUT || 100, //msec
-	  number: process.env.OWL_RETRIES || 3 
+  retries: { // when there is no free capacity, how long should we retry
+	  timeout: process.env.OWL_TIMEOUT || 100, // in msec
+	  number: process.env.OWL_RETRIES || 1000
   },
   delegate_on_failure:  process.env.OWL_DELEGATE_ON_FAILURE || false
 };

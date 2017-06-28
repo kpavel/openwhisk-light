@@ -201,6 +201,10 @@ function _from_auth_header(req) {
   return auth;
 }
 
+function _auth_match(action, auth){
+  return action.api_key == auth.replace(/basic /i, "");
+}
+
 /**
  * Get action from local cashe.
  *
@@ -215,7 +219,7 @@ function _getAction(req, fetch) {
   var that = this;
   return new Promise(function (resolve, reject) {
 	var action = actions[req.params.actionName];
-	if (!fetch && action) {
+	if (!fetch && action && _auth_match(action, req.get("authorization"))){
       resolve(action);
 	} else {
 	  //no cached action, throwing ACTION MISSING error so the caller will know it needs to be created
@@ -224,12 +228,12 @@ function _getAction(req, fetch) {
         if(actions[req.params.actionName] && action.version == actions[req.params.actionName].version){
           console.debug("version of the resolved action identical to cached one: " + action.version + ", no need to update local cache");
           resolve(action);
-        }else{
-          console.debug("version " + action.version + " of the resolved action differ from cached one, registering action " + JSON.stringify(action));
         }
 
 		backend.fetch(req.params.actionName, action.exec.kind, action.exec.image).then((result) => {
           console.debug("action " + req.params.actionName + " registered");
+          action.api_key = req.get("authorization").replace(/basic /i, "");
+
           actions[req.params.actionName] = action;
 
           console.debug("Registered actions ==> " + JSON.stringify(actions));

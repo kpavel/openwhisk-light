@@ -13,11 +13,13 @@ router.post('/namespaces/:namespace/actions/:packageName/:actionName', invokeHan
 
 function invokeHandlerWithPackage(req, res) {
   // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
-  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
+  req.params.actionName = req.params.packageName + '/' + req.params.actionName;
+  console.log("invokehandler with " +  req.params.actionName);
   invokeHandler(req, res);
 }
 
 function invokeHandler(req, res) {
+  req.params.actionName = '/' + req.params.namespace + '/' + req.params.actionName;
   actions.handleInvokeAction(req, res);
 }
 
@@ -26,11 +28,12 @@ router.get('/namespaces/:namespace/actions/:packageName/:actionName', getHandler
 
 function getHandlerWithPackage(req, res) {
   // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
-  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
+  req.params.actionName = req.params.packageName + '/' + req.params.actionName;
   getHandler(req, res);
 }
 
 function getHandler(req, res) {
+  req.params.actionName = '/' + req.params.namespace + '/' + req.params.actionName;
   actions.handleGetAction(req, res);
 }
 
@@ -39,11 +42,12 @@ router.delete('/namespaces/:namespace/actions/:packageName/:actionName', deleteH
 
 function deleteHandlerWithPackage(req, res) {
   // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
-  req.params.actionName = '/' + req.params.namespace + '/' + req.params.packageName + '/' + req.params.actionName;
+  req.params.actionName = req.params.packageName + '/' + req.params.actionName;
   deleteHandler(req, res);
 }
 
 function deleteHandler(req, res) {
+  req.params.actionName = '/' + req.params.namespace + '/' + req.params.actionName;
   actions.handleDeleteAction(req, res);
 }
 

@@ -13,6 +13,16 @@ teardown() {
   run npm stop --prefix $BASE_DIR
 }
 
+@test "wsk action update owl-test" {
+  run bash -c "wsk -i action update owl-test --kind nodejs:6 $DIR/owl-test.js -p hello world > /dev/null 2>&1"
+  run bash -c "wsk -i action invoke owl-test -r | jq '.hello'"
+  echo $output
+  [ "$output" = "\"world\"" ]
+  run bash -c "wsk -i action invoke owl-test -r --auth WRONG-AUTHORIZATION"
+  echo $output
+  [[ "$output" = *"authentication is invalid"* ]]
+}
+
 @test "wsk action create" {
   run wsk -i action update owl-test --kind nodejs:6 $DIR/owl-test.js 
   [ "$status" -eq 0 ]

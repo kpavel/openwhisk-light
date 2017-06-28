@@ -374,7 +374,7 @@ class DockerBackend {
 
       });
 
-      if(kind == "blackbox"){
+      if(kind == "blackbox" && config.blackbox_auto_pull == true){
         console.log("pulling image " + image);
         that.docker.pull(image, function(err, stream){
           if(err){

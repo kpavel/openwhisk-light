@@ -1,7 +1,8 @@
 // This module captures all the functions interacting with the action proxy code running within action containers
 const utils = require('./utils'),
       validator = require('validator'),
-      config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
+      messages = require('./messages'),
+      config = require("./config") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
       initTimeout = config.init_timeout || 10000; // action container init timeout in milliseconds
 
 /**

@@ -2,8 +2,7 @@
 const utils = require('./utils'),
       validator = require('validator'),
       messages = require('./messages'),
-      config = require("./config") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
-      initTimeout = config.init_timeout || 10000; // action container init timeout in milliseconds
+      config = require("./config"); 
 
 /**
  * Initilizes action container
@@ -34,8 +33,8 @@ function init(action, actionContainer) {
       payload.value['binary'] = true;
     }
 
-    const RETRY_TIMEOUT = 100;
-    var retries = initTimeout / RETRY_TIMEOUT
+    const RETRY_TIMEOUT = 100; // in msec
+    var retries = config.init_timeout * 1000 / RETRY_TIMEOUT
     var waitToInit = function(){
       if(--retries == 0){
         console.error("failed to initialize container, " + messages.INIT_TIMEOUT_ERROR);

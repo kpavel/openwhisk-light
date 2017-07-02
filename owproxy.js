@@ -1,18 +1,14 @@
 const request = require('request'),
-      utils = require('./utils'),
       openwhisk = require('openwhisk'),
-      config = require("./config.js") || {}, // configuration settings
+      utils = require('./utils'),
+      config = require("./config"), // configuration settings
 
-      // NEXT_OPENWHISK_HOST specifies the 'next' OpenWhisk API endpoint (typically the OpenWhisk in the Cloud)
-      nextOpenwhiskHost = process.env.OWL_NEXT_OPENWHISK_HOST || 'https://openwhisk.ng.bluemix.net',
+      nextOpenwhiskHost = config.backend_openwhisk,
       url_path_prefix = config.url_path_prefix || '/api/v1',
       nextOpenwhiskApi = nextOpenwhiskHost + url_path_prefix
 
 console.debug("OWL_NEXT_OPENWHISK_HOST: " + nextOpenwhiskHost);
 
-/*
- * Proxy to global openwhisk specified by OPENWHISK_HOST environment variable
- */
 module.exports = {
 
   proxy: function proxy(req, res) {

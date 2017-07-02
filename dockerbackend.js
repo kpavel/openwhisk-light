@@ -1,11 +1,7 @@
 const Docker = require('dockerode'),
       urllib = require("url"),
       os = require("os"),
-      messages = require('./messages'),
       _ = require("underscore"),
-      config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
-      hostCapacity = config.host_capacity || 0, // maximum amount of action containers that we can run
-      initTimeout = config.init_timeout || 10000, // action container init timeout in milliseconds
       moment = require("moment"),
       util    = require('util'),
       stream  = require('stream'),
@@ -13,9 +9,12 @@ const Docker = require('dockerode'),
       duplex  = require('duplexer'),
       split   = require('split'),
       through = require('through'),
-      STATE    = require('./utils').STATE,
       ReadWriteLock = require('rwlock'),
-      ip = require('ip');
+      ip = require('ip'),
+
+      config = require("./config"),
+      messages = require('./messages'),
+      STATE    = require('./utils').STATE,
 
 /////////////////////////////////////////////////////////////
 // PrefixStream, requiered to make prefixes in container logs
@@ -50,7 +49,7 @@ class DockerBackend {
     this.docker = new Docker(this._parse_options(options));
 
     // in case this environment variable specified this network will be used for action containers.
-    this.nwName = process.env.OWL_NET_NAME;
+    this.nwName = config.docker_net_name;
     this.myIP = "unknown";
 
     //e.g. { $ACTION_NAME: [{ state: "created", container: container_object, used: timestamp_seconds... , ] };
@@ -274,6 +273,7 @@ class DockerBackend {
  * @return {Promise} promise
  */
   getActionContainer(actionName, actionKind, actionImage){
+    const hostCapacity = config.host_capacity; // maximum amount of action containers that we can run
     var that = this;
 
     return new Promise((resolve, reject) => {
@@ -406,7 +406,7 @@ class DockerBackend {
       that.docker.createContainer({
         Tty: true, Image: image,
         NetworkMode: that.nwName, 'HostConfig': {NetworkMode: that.nwName},
-        Env: ["__OW_API_HOST="+"http://"+this.myIP+":"+process.env.OWL_PORT],
+        Env: ["__OW_API_HOST="+"http://"+this.myIP+":"+config.owl_port],
         Labels: {"action": actionName}},
         function (err, container) {
           if(err){

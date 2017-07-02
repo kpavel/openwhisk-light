@@ -46,7 +46,7 @@ class DockerBackendWithPreemption extends DockerBackend {
             var activeContainersNum = 0;
             for(var key in that.containers){
               activeContainers = activeContainers.concat(_.filter(that.containers[key], (o) => {
-                return (o.state != STATE.stopped);
+                return (o.state == STATE.running);
               }));
 
               //  TODO: move inactive containers handling to separate cron job

@@ -16,12 +16,5 @@ teardown() {
 
 @test "wsk action invoke on zero capacity without delegation and check activation not created" {
   actid=`wsk -i action invoke owl-test -p aa BB | cut -d' ' -f 6`
-  echo $actid
-#  res=none
-#  run bash -c "wsk -i activation get $actid | jq '.aa'"
-#  for i in {1..5}; do res=`wsk -i activation result $actid | jq '.aa'` && test "$res" != "null" && break || sleep 1; done
-#  echo $res
-#  [ "$res" = "\"BB\"" ]
-  echo actid:$actid
   [ "$actid" = "" ]
 }

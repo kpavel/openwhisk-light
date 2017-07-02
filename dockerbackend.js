@@ -362,16 +362,14 @@ class DockerBackend {
       }
 
       // deprecate containers
+      console.debug("starting container deprecation for action " + actionName);
       _.each(that.containers[actionName], function(actionContainer){
-        actionContainer.state = STATE.deprecated;
-
-        actionContainer.container.stop(function(){
-          actionContainer.container.remove(function(){
-            const containerArray = that.containers[actionName];
-            containerArray.splice(containerArray.indexOf(actionContainer), 1);
-          });
-        });
-
+        console.debug("deprecating actionContainer");
+        if(actionContainer.state == STATE.allocated || actionContainer.state == STATE.reserved){
+          actionContainer.state = STATE.deprecated;
+        }else{
+          that._removeContainer(actionContainer);
+        }
       });
 
       if(kind == "blackbox" && config.blackbox_auto_pull == 'true'){
@@ -421,6 +419,31 @@ class DockerBackend {
     });
   };
 
+  _removeContainer(actionContainer){
+    var that = this;
+    actionContainer.container.stop(function(){
+      actionContainer.container.remove(function(){
+        const containerArray = that.containers[actionContainer.actionName];
+        containerArray.splice(containerArray.indexOf(actionContainer), 1);
+      });
+    });
+  };
+
+  /**
+  * After container action invoke finished container should be validated for deprecation state
+  * In case it's already deprecated - remove container
+  * Otherwise return it to the "hot' containers pool while updating it's last used attribute
+  * for preemption purposes
+  */
+  invalidateContainer(actionContainer){
+    if(actionContainer.state != STATE.deprecated){
+      console.debug("container state: " + actionContainer.state + ", is not deprecated, returning it to running state");
+      Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
+    }else{
+      console.debug("removing deprecated container");
+      this._removeContainer(actionContainer);
+    }
+  };
 }
 
 module.exports = DockerBackend;

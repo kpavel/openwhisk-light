@@ -14,7 +14,7 @@ const Docker = require('dockerode'),
 
       config = require("./config"),
       messages = require('./messages'),
-      STATE    = require('./utils').STATE,
+      STATE    = require('./utils').STATE;
 
 /////////////////////////////////////////////////////////////
 // PrefixStream, requiered to make prefixes in container logs

@@ -20,7 +20,7 @@ class DockerBackendWithPreemption extends DockerBackend {
   start_preemption(){
     const that = this;
 
-    const hostCapacity = config.host_capacity, // max number of containers per host
+    const hostCapacity = config.host_capacity; // max number of containers per host
     const preeemptionPeriod = config.preemption.period;     // how often to check whether containers should be stopped
     const preemption_high_percent = config.preemption.high_percent;
     const preemption_low_percent = config.preemption.low_percent;

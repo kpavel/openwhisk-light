@@ -1,20 +1,17 @@
-const DockerBackend = require('./dockerbackend.js'),
-      DockerBackendWithPreemption = require('./dockerBackendWithPreemption.js'),
+const DockerBackend = require('./dockerbackend'),
+      DockerBackendWithPreemption = require('./dockerBackendWithPreemption'),
       messages = require('./messages'),
-      config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
+      config = require("./config"),
       url = require('url'),
       activations = require('./activations'),
       uuid = require("uuid"),
       retry = require('retry-as-promised'),
       actionproxy = require('./actionproxy'),
       STATE = require('./utils').STATE,
-      owproxy = require('./owproxy.js'),
+      owproxy = require('./owproxy'),
       
-      dockerhost = process.env.DOCKER_HOST || function() {
-        throw "please set the DOCKER_HOST environmental variable, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375";
-      }(),
-
-      backend = (config.preemption && config.preemption.enabled == true) ?
+      dockerhost = config.docker_host,
+      backend = (config.preemption && config.preemption.enabled == 'true') ?
                 new DockerBackendWithPreemption({dockerurl: dockerhost}) :
                 new DockerBackend({dockerurl: dockerhost}),
  

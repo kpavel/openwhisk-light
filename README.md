@@ -104,13 +104,13 @@ The main API which is implemented locally in OWL is the API to invoke an action.
 3. Invoke the action by calling the `/run` REST API of the action container, passing the JSON payload to the container and passing the result back.
 
 ## Resource management
-Similarly to centralized OpenWhisk in the cloud, OWL attempts to minimize the latency of consequent invocations of the same action by keeping 'hot' action containers preloaded with the proper action container image and code, and ready to process the next invocation payload. However, in order not to run out of capacity too quickly, there is a need to balance availability of 'hot' containers for a certain action with avavilability of resources to create containers for other actions. This balance is currently managed by a simple "preemption" mechanism, monitoring the resource utilization and the idleness of containers, and cleaning up idle containers when needed. The logic is controlled by several configuration parameters (specified in [config.js](config.js)), including:
+Similarly to centralized OpenWhisk in the cloud, OWL attempts to minimize the latency of consequent invocations of the same action by keeping 'hot' action containers preloaded with the proper action container image and code, and ready to process the next invocation payload. However, in order not to run out of capacity too quickly, there is a need to balance availability of 'hot' containers for a certain action with avavilability of resources to create containers for other actions. This balance is currently managed by a simple "preemption" mechanism, monitoring the resource utilization and the idleness of containers, and cleaning up idle containers when needed. The logic is controlled by several configuration parameters (see [CONFIG.md](CONFIG.md))), including:
 - preemptionPeriod: how often (in seconds) to invoke the preemption logic
-- totalCapacity: total number of containers allowed to run on a single Docker host simultaneously
-- preemption_high_percent: high watermark, indicating above which percent of totalCapacity we should start cleaning up idle containers
-- preemption_low_percent: low watermark, indicating below which percent of totalCapacity we should reach in order to stop cleaning up idle containers.
+- hostCapacity: total number of containers allowed to run on a Docker host simultaneously
+- preemption_high: high watermark, indicating above which portion of hostCapacity we should start cleaning up idle containers
+- preemption_low: low watermark, indicating below which portion of hostCapacity we should reach in order to stop cleaning up idle containers.
 
-For example, if totalCapacity is 8 and watermarks are 70% and 40%, cleanup of idle containers will start when there are 6 containers running (above 8\*70%=5.6), and will stop once the number of running containers decreases to 3 (below 8\*40%=3.2). Cleanup applies to containers with longest idle time first.
+For example, if hostCapacity is 8 and watermarks are 70% and 40%, cleanup of idle containers will start when there are 6 containers running (above 8\*70%=5.6), and will stop once the number of running containers decreases to 3 (below 8\*40%=3.2). Cleanup applies to containers with longest idle time first.
 
 
 ## Extensions and future work

@@ -2,7 +2,7 @@
 
 load test_helper
 export OWL_DELEGATE_ON_FAILURE=false
-export OWL_TOTAL_CAPACITY=0
+export OWL_HOST_CAPACITY=0
 
 setup() {
   run npm start --prefix $BASE_DIR&

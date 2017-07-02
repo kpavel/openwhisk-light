@@ -4,7 +4,7 @@ const Docker = require('dockerode'),
       messages = require('./messages'),
       _ = require("underscore"),
       config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
-      totalCapacity = config.total_capacity || 0, // maximum amount of action containers that we can run
+      hostCapacity = config.host_capacity || 0, // maximum amount of action containers that we can run
       initTimeout = config.init_timeout || 10000, // action container init timeout in milliseconds
       moment = require("moment"),
       util    = require('util'),
@@ -304,8 +304,8 @@ class DockerBackend {
           }).length;
         }
 
-        console.debug("checking if didn't reach full capacity: " + activeContainersNum + "<" + totalCapacity * that.nodesNumber);
-        if(activeContainersNum >= totalCapacity * that.nodesNumber){
+        console.debug("checking if didn't reach full capacity: " + activeContainersNum + "<" + hostCapacity * that.nodesNumber);
+        if(activeContainersNum >= hostCapacity * that.nodesNumber){
           release();
           return reject(messages.TOTAL_CAPACITY_LIMIT);
         }
@@ -374,7 +374,7 @@ class DockerBackend {
 
       });
 
-      if(kind == "blackbox" && config.blackbox_auto_pull == true){
+      if(kind == "blackbox" && config.blackbox_auto_pull == 'true'){
         console.log("pulling image " + image);
         that.docker.pull(image, function(err, stream){
           if(err){

@@ -2,7 +2,7 @@ const DockerBackend = require('./dockerbackend.js'),
       cron = require("cron"),
       _ = require("underscore"),
       config = require("./config.js") || {}, // holds node specific settings, consider to use another file, e.g. config.js as option
-      totalCapacity = config.total_capacity || 0, // max number of containers per host
+      hostCapacity = config.host_capacity || 0, // max number of containers per host
       STATE    = require('./utils').STATE;
 
 class DockerBackendWithPreemption extends DockerBackend {
@@ -24,10 +24,10 @@ class DockerBackendWithPreemption extends DockerBackend {
     const preeemptionPeriod = config.preemption.period || 300;     // how often to check whether containers should be stopped
     const preemption_high_percent = config.preemption.high_percent || 0.75;
     const preemption_low_percent = config.preemption.low_percent || 0.25;
-    const preemptionHighThresholdPerHost = totalCapacity * preemption_high_percent;  // indicates when preeption should be started (75% of max amount)
-    const preemptionLowThresholdPerHost = totalCapacity * preemption_low_percent;    // low and high thresholds define an optimal window of containers performace and host utilization balance
+    const preemptionHighThresholdPerHost = hostCapacity * preemption_high_percent;  // indicates when preeption should be started (e.g., 75% of max amount)
+    const preemptionLowThresholdPerHost = hostCapacity * preemption_low_percent;    // low and high thresholds define an optimal window of containers performace and host utilization balance
     const factors = config.preemption.factors || {}; // preemption factor per image type, e.g. java/blackbox container may take more time to start than js one
-    const containerCleanup = config.preemption.container_cleanup || 300; //seconds to wait until removing idle containers even if below watermark
+    const containerCleanup = config.preemption.container_cleanup || 600; //seconds to wait until removing idle containers even if below watermark
 
     var cronjob = new cron.CronJob('*/' + preeemptionPeriod +' * * * * *',
       function() {

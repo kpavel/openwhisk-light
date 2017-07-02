@@ -14,7 +14,7 @@ const DockerBackend = require('./dockerbackend.js'),
         throw "please set the DOCKER_HOST environmental variable, e.g. http://${MY_HOST_WITH_DOCKER_REST}:2375";
       }(),
 
-      backend = (config.preemption && config.preemption.enabled == true) ?
+      backend = (config.preemption && config.preemption.enabled == 'true') ?
                 new DockerBackendWithPreemption({dockerurl: dockerhost}) :
                 new DockerBackend({dockerurl: dockerhost}),
  

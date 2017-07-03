@@ -364,7 +364,7 @@ class DockerBackend {
       // deprecate containers
       console.debug("starting container deprecation for action " + actionName);
       _.each(that.containers[actionName], function(actionContainer){
-        console.debug("deprecating actionContainer");
+        console.debug("deprecating actionContainer " + JSON.stringify(actionContainer));
         if(actionContainer.state == STATE.allocated || actionContainer.state == STATE.reserved){
           actionContainer.state = STATE.deprecated;
         }else{
@@ -420,6 +420,7 @@ class DockerBackend {
   };
 
   _removeContainer(actionContainer){
+    console.log("deleting actionContainer: " + JSON.stringify(actionContainer));
     var that = this;
     actionContainer.container.stop(function(){
       actionContainer.container.remove(function(){

@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load test_helper
+load ../test_helper
 export OWL_DELEGATE_ON_FAILURE=false
 export OWL_HOST_CAPACITY=5
 export OWL_PREEMPTION_ENABLED=true
@@ -9,7 +9,7 @@ export OWL_PREEMPTION_LOW=0.25
 export OWL_PREEMPTION_HIGH=0.75
 
 setup() {
-  run npm start --prefix $BASE_DIR&
+  run npm start --prefix $DIR/../..&
 
   # long sleep to wait for containers cleanup
   run bash -c "sleep 20"
@@ -20,7 +20,7 @@ teardown() {
       wsk -i action delete owl-test-$i > /dev/null 2>&1
   done
   wsk -i action delete owl-sleep-test > /dev/null 2>&1
-  run npm stop --prefix $BASE_DIR
+  run npm stop --prefix $DIR/../..
 }
 
 ########
@@ -113,8 +113,8 @@ teardown() {
   containersNum=`docker ps|grep nodejs6action|wc -l`
   [ "$containersNum" = "0" ]
   for (( i=0; i<$OWL_HOST_CAPACITY; i++ )); do
-    echo "runing wsk -i action update owl-test-$i --kind nodejs:6 $DIR/owl-test.js"
-    wsk -i action update owl-test-$i --kind nodejs:6 $DIR/owl-test.js > /dev/null 2>&1
+    echo "runing wsk -i action update owl-test-$i --kind nodejs:6 $DIR/../owl-test.js"
+    wsk -i action update owl-test-$i --kind nodejs:6 $DIR/../owl-test.js > /dev/null 2>&1
   done
 
   for (( i=0; i<$OWL_HOST_CAPACITY; i++ )); do

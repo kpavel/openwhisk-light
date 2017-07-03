@@ -14,7 +14,8 @@ const DockerBackend = require('./dockerbackend'),
       backend = (config.preemption && config.preemption.enabled == 'true') ?
                 new DockerBackendWithPreemption({dockerurl: dockerhost}) :
                 new DockerBackend({dockerurl: dockerhost}),
- 
+
+
       retryOptions = {
         max: config.retries.number, 
         timeout: 60000, // TODO: use action time limit?
@@ -31,7 +32,6 @@ const DockerBackend = require('./dockerbackend'),
       actions = {};
 
 console.debug("dockerhost: " + dockerhost);
-
 
  /**
  * Invokes action in Openwhisk light platform
@@ -108,18 +108,18 @@ function handleInvokeAction(req, res) {
           var params = req.body;
           action.parameters.forEach(function(param) { params[param.key]=param.value; });
 		  actionproxy.run(actionContainer, api_key, params).then(function(result){
-            console.debug("invoke request returned with " + result);
-            Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
+            console.debug("invoke request returned with " + JSON.stringify(result));
+            backend.invalidateContainer(actionContainer);
             updateAndRespond(actionContainer, activation, result);
             return;
           }).catch(function(err){
             console.error("invoke request failed with " + err);
-            Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
+            backend.invalidateContainer(actionContainer);
             updateAndRespond(actionContainer, activation, {}, err);
           });					
         }).catch(function(err){
           console.error("container init failed with " + err);
-          Object.assign(actionContainer, {'used': process.hrtime()[0], state: STATE.running});
+          backend.invalidateContainer(actionContainer);
           updateAndRespond(actionContainer, activation, {}, err);
         });
       }).catch(function (err) {

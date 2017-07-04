@@ -19,7 +19,7 @@ function init(action, actionContainer) {
     actionContainer.logs = [];
 
     if(actionContainer.inited){
-      resolve();
+      return resolve();
     }
     
     var payload;

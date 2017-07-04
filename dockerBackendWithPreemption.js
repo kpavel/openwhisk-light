@@ -83,7 +83,7 @@ class DockerBackendWithPreemption extends DockerBackend {
               var fnRm = (containerInfo) => {
                 return new Promise((resolve) => {
                   if(!containerInfo.container){
-                    resolve();
+                    return resolve();
                   }
                   containerInfo.container.stop(function(data){
                     containerInfo.container.remove(function(data){

@@ -259,8 +259,8 @@ function _getAction(req, fetch) {
 	  console.debug("getting action " + req.params.actionName + " from owproxy");
 	  owproxy.getAction(req).then((action) => {
         if(actions[req.params.actionName] && action.version == actions[req.params.actionName].version){
-          console.debug("version of the resolved action identical to cached one: " + action.version + ", no need to update local cache");
-          resolve(action);
+          console.debug("resolved action version identical to cached one: " + action.version + ", no need to update local cache");
+          return resolve(action);
         }
 
         _updateAction(req, action).then(() => {

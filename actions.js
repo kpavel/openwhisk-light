@@ -191,6 +191,25 @@ function handleDeleteAction(req, res) {
   });
 }
 
+/**
+ * - delegate action update to openwhisk next
+ * - update action in local registry
+ * @param {Object} req
+ * @param {Object} res
+ */
+function handleUpdateAction(req, res) {
+  owproxy.updateAction(req).then(function (result) {
+    console.debug("action update result: " + JSON.stringify(result));
+    _updateAction(req, result).then(()=>{
+      console.debug("action updated");
+      res.send(result); 
+    });
+  }).catch(function (e) {
+    console.error(JSON.stringify(e));
+    _processErr(req, res, e);
+  });
+}
+
 function _from_auth_header(req) {
   var auth = req.get("authorization");
   auth = auth.replace(/basic /i, "");
@@ -200,6 +219,23 @@ function _from_auth_header(req) {
 
 function _auth_match(action, auth){
   return action.api_key == auth.replace(/basic /i, "");
+}
+
+function _updateAction(req, action){
+  var that = this;
+  return new Promise(function (resolve, reject) {
+    backend.fetch(req.params.actionName, action.exec.kind, action.exec.image).then((result) => {
+      console.debug("action " + req.params.actionName + " registered");
+      action.api_key = req.get("authorization").replace(/basic /i, "");
+      actions[req.params.actionName] = action;
+
+      console.debug("Registered actions ==> " + JSON.stringify(actions));
+      resolve();
+    }).catch(function (e) {
+      console.error("Error fetching an action: " + e);
+      reject(e);
+    });
+  });
 }
 
 /**
@@ -227,19 +263,13 @@ function _getAction(req, fetch) {
           resolve(action);
         }
 
-		backend.fetch(req.params.actionName, action.exec.kind, action.exec.image).then((result) => {
-          console.debug("action " + req.params.actionName + " registered");
-          action.api_key = req.get("authorization").replace(/basic /i, "");
-
-          actions[req.params.actionName] = action;
-
+        _updateAction(req, action).then(() => {
           console.debug("Registered actions ==> " + JSON.stringify(actions));
-
           resolve(action);
-		}).catch(function (e) {
+        }).catch(function (e) {
           console.error("Error registering action: " + e);
           reject(e);
-        })
+        });
       }).catch(function (e) {
         console.log("Error getting action: " + e);
 		reject(e);
@@ -302,13 +332,17 @@ function _buildResponse(result, err){
 }
 
 function _processErr(req, res, err){
-  var msg = _getErrorMessage(err);
-  console.debug("error occured: " + msg);
+  if(err.name && err.statusCode){
+    res.send(err);
+  }else{
+    var msg = _getErrorMessage(err);
+    console.debug("error occured: " + msg);
          
-  res.status(404).send({
-    error: msg,
-   	code: -1
-  });
+    res.status(404).send({
+      error: msg,
+      code: -1
+    });
+  }
 }
 
 function _getErrorMessage(error){
@@ -318,6 +352,7 @@ function _getErrorMessage(error){
 module.exports = {
   handleInvokeAction:handleInvokeAction, 
   handleDeleteAction:handleDeleteAction, 
-  handleGetAction:handleGetAction
+  handleGetAction:handleGetAction,
+  handleUpdateAction
 };
 

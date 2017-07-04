@@ -51,6 +51,21 @@ function deleteHandler(req, res) {
   actions.handleDeleteAction(req, res);
 }
 
+router.put('/namespaces/:namespace/actions/:actionName', updateHandler);
+router.put('/namespaces/:namespace/actions/:packageName/:actionName', updateHandlerWithPackage);
+
+function updateHandlerWithPackage(req, res) {
+  // concatenate /<namespace>/<packageName>/<actionName> and pass as action name
+  req.params.actionName = req.params.packageName + '/' + req.params.actionName;
+  updateHandler(req, res);
+}
+
+function updateHandler(req, res) {
+  req.params.actionName = '/' + req.params.namespace + '/' + req.params.actionName;
+  actions.handleUpdateAction(req, res);
+}
+
+
 // ===== ACTIVATIONS =====
 router.get('/namespaces/:namespace/activations', function(req, res) {
   activations.handleGetActivations(req, res);

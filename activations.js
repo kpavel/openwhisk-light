@@ -20,6 +20,11 @@ switch (config.db_strategy) {
   case 'disable':
     console.log('database disabled');
     break;
+  case 'test':
+  case 'test1':
+  case 'test2':
+    console.log('test mode');
+    break;
   default:
     var msg = 'unsupported database strategy chosen' + config.db_strategy + '.';
     console.error(msg);
@@ -119,7 +124,7 @@ function handleGetActivationResult(req, res) {
  * @param {Object} activationDoc
  * @return {Object} activationDoc
  */
-function createActivation(namespace, name) {
+function createActivation(namespace, name, start) {
   var activationId = uuid.v4();
   var activation = {
     activationId,

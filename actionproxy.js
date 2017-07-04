@@ -19,9 +19,10 @@ function init(action, actionContainer) {
     actionContainer.logs = [];
 
     if(actionContainer.inited){
-      resolve();
+      console.log("container already inited");
+      return resolve();
     }
-    
+
     var payload;
     if(action.exec.kind == "java"){
       payload = {value: { main: action.exec.main, jar: action.exec.code, code: action.exec.code}};

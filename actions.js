@@ -61,6 +61,7 @@ function handleInvokeAction(req, res) {
   var api_key = _from_auth_header(req);
 
   function respond(result, err){
+    console.log("responding with " + result);
 	var rc = err ? 502 : 200;
 	var response = _buildResponse(result, err);
 	res.status(rc).send(response.result);
@@ -111,8 +112,18 @@ function handleInvokeAction(req, res) {
     retry(function () { return backend.getActionContainer(req.params.actionName, action.exec.kind, action.exec.image) }, retryOptions).then((actionContainer) => {
       _createActivationAndRespond(req, res, start).then((activation) => {
         console.debug("container allocated");
+        if(config.db_strategy == 'test1'){
+            backend.invalidateContainer(actionContainer);
+            return respond({test: 'test1'});
+        }
         actionproxy.init(action, actionContainer).then(() => {
           console.debug("container initialized");
+          
+          if(config.db_strategy == 'test2'){
+            backend.invalidateContainer(actionContainer);
+            return respond({test: 'test2'});
+          }
+
           var params = req.body;
           action.parameters.forEach(function(param) { params[param.key]=param.value; });
 		  actionproxy.run(actionContainer, api_key, params).then(function(result){
@@ -288,7 +299,7 @@ function _getAction(req, fetch) {
 
 function _createActivationAndRespond(req, res, start){
   return new Promise(function(resolve,reject) {
-    activations.createActivation(req.params.namespace, req.params.actionName).then(function (activation) {
+    activations.createActivation(req.params.namespace, req.params.actionName, start).then(function (activation) {
 	  console.debug("create activation response: " + JSON.stringify(activation));
 		
 	  // if not blocking respond with activation id and continue with the flow
@@ -324,6 +335,8 @@ function _buildResponse(result, err){
       "success": true
     };
   }
+
+  console.log("builded response: " + JSON.stringify(response));
   return response;
 }
 

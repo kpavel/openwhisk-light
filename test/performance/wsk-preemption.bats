@@ -58,7 +58,7 @@ teardown() {
 # invoke HOST_CAAPCITY number of actions without blocking to hang
 #   for SLEEP_MILLISECONDS and store their activations ids
 # update all the actions above (update + get)
-# wait for TIME > OWL_PREEMPTION_TIME < SLEEP_MILLISECONDS and 
+# wait for TIME > OWL_PREEMPTION_TIME < SLEEP_MILLISECONDS and
 #   validate that containers not been preempted
 # wait for TIME > SLEEP_MILLISECONDS and check activations result
 # check containers been preempted

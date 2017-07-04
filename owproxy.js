@@ -39,6 +39,10 @@ module.exports = {
 
   deleteAction: function deleteAction(req){
     return utils.request("DELETE", nextOpenwhiskApi + req.path, req.body, {"authorization": req.get("authorization")});
+  },
+
+  updateAction: function updateAction(req){
+    return utils.request("PUT", nextOpenwhiskApi + req.url, req.body, {"authorization": req.get("authorization")});
   }
 };
 

@@ -365,7 +365,7 @@ class DockerBackend {
       console.debug("starting container deprecation for action " + actionName);
       _.each(that.containers[actionName], function(actionContainer){
         console.debug("deprecating actionContainer " + JSON.stringify(actionContainer));
-        if(actionContainer.state != STATE.allocated && actionContainer.state != STATE.reserved){
+        if(actionContainer.state == STATE.stopped || actionContainer.state == STATE.running){
           actionContainer.state = STATE.deprecated;
           that._removeContainer(actionContainer);
         }else{

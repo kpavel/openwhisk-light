@@ -4,7 +4,6 @@ const DockerBackend = require('./dockerbackend'),
       config = require("./config"),
       url = require('url'),
       activations = require('./activations'),
-      uuid = require("uuid"),
       retry = require('retry-as-promised'),
       actionproxy = require('./actionproxy'),
       STATE = require('./utils').STATE,
@@ -70,6 +69,15 @@ function handleInvokeAction(req, res) {
   function updateAndRespond(actionContainer, activation, result, err) {
     var rc = err ? 502 : 200;
 	var response = _buildResponse(result, err);
+
+    if(!activation){
+      if(req.query.blocking === "true") {
+        console.debug("returning result: " + response.result);
+        res.status(rc).send(response.result);
+      }
+      console.debug("returning");
+      return;
+    }
 
 	activations.getActivation(activation.activationId).then(function(activationDoc) {
       console.debug('updating activation: ' + JSON.stringify(activationDoc));
@@ -279,26 +287,14 @@ function _getAction(req, fetch) {
 }
 
 function _createActivationAndRespond(req, res, start){
-  var activationId = uuid.v4();
-  var activation = {
-	activationId,
-    "logs": [],
-    name: req.params.actionName,
-    namespace: req.params.namespace,
-    "publish": false,
-    start,
-    "subject": "owl@il.ibm.com",
-    "version": "0.0.0"
-  }
-	
   return new Promise(function(resolve,reject) {
-    activations.createActivation(activation).then(function (response) {
-	  console.debug("create activation response: " + JSON.stringify(response));
+    activations.createActivation(req.params.namespace, req.params.actionName).then(function (activation) {
+	  console.debug("create activation response: " + JSON.stringify(activation));
 		
 	  // if not blocking respond with activation id and continue with the flow
       if(req.query.blocking !== "true"){
-	    console.debug("returning activation: " + JSON.stringify(activation));
-        res.send(activation);
+	    console.debug("returning activation: " + activation ? activation : "");
+        res.send(activation ? activation : "");
       }		   
 	  resolve(activation);
     }).catch(function (err) {
@@ -336,7 +332,8 @@ function _processErr(req, res, err){
     res.send(err);
   }else{
     var msg = _getErrorMessage(err);
-    console.debug("error occured: " + msg);
+
+    err.stack && console.error(err.stack) || console.error("error occured: " + msg);
          
     res.status(404).send({
       error: msg,

@@ -1,11 +1,33 @@
 const owproxy = require('./owproxy.js'),
-      PouchDB = require('pouchdb'),
-      db = new PouchDB('owl.db'),
-      _ = require("underscore");
+      uuid = require("uuid"),
+      _ = require("underscore"),
+      config = require("./config.js");
 
-PouchDB.plugin(require('pouchdb-find'));
+switch (config.db_strategy) {
+  case 'disk':
+    console.log('disk database strategy chosen');
+    var PouchDB = require('pouchdb');
+    PouchDB.plugin(require('pouchdb-find'));
+    var db = new PouchDB(config.db_name);
+    break;
+  case 'memory':
+    console.log('memory database strategy chosen');
+    var PouchDB = require('pouchdb');
+    PouchDB.plugin(require('pouchdb-find'));
+    PouchDB.plugin(require('pouchdb-adapter-memory'));
+    var db = new PouchDB(config.db_name, {adapter: 'memory'});
+    break;
+  case 'disable':
+    console.log('database disabled');
+    break;
+  default:
+    var msg = 'unsupported database strategy chosen' + config.db_strategy + '.';
+    console.error(msg);
+    throw msg; 
+}
 
-db.createIndex({
+
+db && db.createIndex({
   index: {fields: ['activation.start']}
 }).then((res)=>{console.debug("indexing res: " + JSON.stringify(res));}).catch((err)=>{console.error("indexing error: " + err)});
 
@@ -97,8 +119,28 @@ function handleGetActivationResult(req, res) {
  * @param {Object} activationDoc
  * @return {Object} activationDoc
  */
-function createActivation(activationDoc) {
-  return db.put({_id:activationDoc.activationId, activation:activationDoc});
+function createActivation(namespace, name) {
+  var activationId = uuid.v4();
+  var activation = {
+    activationId,
+    "logs": [],
+    name,
+    namespace,
+    "publish": false,
+    start,
+    "subject": "owl@il.ibm.com",
+    "version": "0.0.0"
+  }
+
+  return new Promise((resolve,reject)=>{
+    db.put({_id:activation.activationId, activation}).then((result)=>{
+      if(result.ok){
+        resolve(activation);
+      }else{
+        reject(result);
+      }
+    });
+  });
 }
 
 /**
@@ -122,12 +164,12 @@ function getActivation(activationId) {
 }
 
 module.exports = {
-  handleGetActivations:handleGetActivations, 
-  handleGetActivation:handleGetActivation,
-  handleGetActivationLogs:handleGetActivationLogs,
-  handleGetActivationResult:handleGetActivationResult,
-  createActivation:createActivation,
-  updateActivation:updateActivation,
-  getActivation:getActivation
+  handleGetActivations: db ? handleGetActivations : owproxy.proxy, 
+  handleGetActivation: db ? handleGetActivation : owproxy.proxy,
+  handleGetActivationLogs: db ? handleGetActivationLogs : owproxy.proxy,
+  handleGetActivationResult: db ? handleGetActivationResult : owproxy.proxy,
+  createActivation: db ? createActivation : (o)=>{/* do nothing */ return Promise.resolve()},
+  updateActivation: db ? updateActivation : (o)=>{/* do nothing */ return Promise.resolve()},
+  getActivation: db ? getActivation : (o)=>{return Promise.resolve()}  
 };
 

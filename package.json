@@ -26,6 +26,7 @@
     "openwhisk": "^3.5.1",
     "os": "^0.1.1",
     "pouchdb": "*",
+    "pouchdb-adapter-memory": "^6.2.0",
     "pouchdb-find": "^6.2.0",
     "readable-stream": "^2.2.9",
     "request": "^2.81.0",

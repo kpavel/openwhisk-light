@@ -37,5 +37,15 @@ module.exports = {
     number: process.env.OWL_RETRIES_NUMBER || 1000
   },
   delegate_on_failure:  process.env.OWL_DELEGATE_ON_FAILURE || 'false',
-  blackbox_auto_pull: process.env.OWL_BLACKBOX_AUTO_PULL || 'true'
+  blackbox_auto_pull: process.env.OWL_BLACKBOX_AUTO_PULL || 'true',
+
+  /**
+  * db config
+  * 3 options:
+  *   'disk'   -  stores data on disk
+  *   'memory' -  keeps data in memory. not persistent.
+  *   'disable'-  not using db (e.g. in this case owl doesn't support local activations api)
+  */
+  db_strategy: process.env.DB_STRATEGY || 'disk',
+  db_name: process.env.DB_NAME || 'owl.db'
 };

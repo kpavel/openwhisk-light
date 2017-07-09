@@ -112,20 +112,27 @@ function handleInvokeAction(req, res) {
     retry(function () { return backend.getActionContainer(req.params.actionName, action.exec.kind, action.exec.image) }, retryOptions).then((actionContainer) => {
       _createActivationAndRespond(req, res, start).then((activation) => {
         console.debug("container allocated");
-        if(config.db_strategy == 'test1'){
+        if(config.db_strategy == 'test'){
             backend.invalidateContainer(actionContainer);
-            return respond({test: 'test1'});
+            return respond({test: 'test'});
         }
         actionproxy.init(action, actionContainer).then(() => {
           console.debug("container initialized");
           
+          if(config.db_strategy == 'test1'){
+            backend.invalidateContainer(actionContainer);
+            return respond({test: 'test1'});
+          }
+
+          var params = req.body;
+          console.log("req.body: " + JSON.stringify(req.body));
+          action.parameters.forEach(function(param) { params[param.key]=param.value; });
           if(config.db_strategy == 'test2'){
             backend.invalidateContainer(actionContainer);
             return respond({test: 'test2'});
           }
 
-          var params = req.body;
-          action.parameters.forEach(function(param) { params[param.key]=param.value; });
+          console.debug("invoking action on container with params: " + JSON.stringify(params));
 		  actionproxy.run(actionContainer, api_key, params).then(function(result){
             console.debug("invoke request returned with " + JSON.stringify(result));
             backend.invalidateContainer(actionContainer);
